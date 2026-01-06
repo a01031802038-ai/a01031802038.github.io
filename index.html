@@ -5,118 +5,118 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>쉐키나 찬양팀 곡 검색</title>
   <style>
-    :root {
+    :root{
       --bd:#e5e7eb; --fg:#111827; --muted:#6b7280; --bg:#ffffff;
       --chip:#f3f4f6; --warn:#991b1b; --ok:#065f46;
       --shadow: 0 10px 30px rgba(17,24,39,.08);
     }
-    * { box-sizing: border-box; }
-    body {
+    *{ box-sizing:border-box; }
+    body{
       margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, sans-serif;
-      background: var(--bg); color: var(--fg);
+      background:var(--bg); color:var(--fg);
     }
-    .wrap { max-width: 1080px; margin: 0 auto; padding: 22px; }
-    h1 { font-size: 20px; margin: 0 0 6px; letter-spacing: -.2px; }
-    .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; line-height: 1.55; }
-    .card {
-      border:1px solid var(--bd); border-radius: 16px; padding: 14px; margin: 12px 0;
-      box-shadow: var(--shadow);
-      background: #fff;
+    .wrap{ max-width:1080px; margin:0 auto; padding:22px; }
+    h1{ font-size:20px; margin:0 0 6px; letter-spacing:-.2px; }
+    .sub{ color:var(--muted); font-size:13px; margin-bottom:14px; line-height:1.55; }
+    .muted{ color:var(--muted); font-size:12px; }
+
+    .card{
+      border:1px solid var(--bd); border-radius:16px; padding:14px; margin:12px 0;
+      box-shadow:var(--shadow); background:#fff;
     }
-    label { font-size: 12px; color: var(--muted); display:block; margin-bottom: 6px; }
-    .searchWrap { position: relative; }
-    input[type="text"] {
-      width:100%; padding: 12px 44px 12px 12px; border:1px solid var(--bd); border-radius: 12px;
-      font-size: 15px; outline: none; transition: border-color .15s ease, box-shadow .15s ease;
+    label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    .searchWrap{ position:relative; }
+    input[type="text"]{
+      width:100%; padding:12px 44px 12px 12px; border:1px solid var(--bd); border-radius:12px;
+      font-size:15px; outline:none; transition:border-color .15s ease, box-shadow .15s ease;
     }
-    input[type="text"]:focus { border-color:#cbd5e1; box-shadow: 0 0 0 4px rgba(148,163,184,.25); }
-    .clearBtn {
-      position:absolute; right:8px; top:50%; transform: translateY(-50%);
-      border:1px solid var(--bd); background:#fff; border-radius: 10px;
-      padding: 6px 10px; font-size: 12px; cursor:pointer;
+    input[type="text"]:focus{ border-color:#cbd5e1; box-shadow:0 0 0 4px rgba(148,163,184,.25); }
+    .clearBtn{
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      border:1px solid var(--bd); background:#fff; border-radius:10px;
+      padding:6px 10px; font-size:12px; cursor:pointer;
     }
-    .clearBtn:hover { background:#fafafa; }
-    .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
-    .status { font-size: 12px; white-space:pre-wrap; margin-top: 10px; display:flex; align-items:center; gap:8px; }
-    .status.ok { color: var(--ok); }
-    .status.bad { color: var(--warn); }
-    .spin {
-      width: 14px; height: 14px; border-radius: 999px;
-      border: 2px solid rgba(17,24,39,.2);
-      border-top-color: rgba(17,24,39,.65);
-      animation: spin 0.8s linear infinite;
+    .clearBtn:hover{ background:#fafafa; }
+    .hint{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.5; }
+    .status{ font-size:12px; white-space:pre-wrap; margin-top:10px; display:flex; align-items:center; gap:8px; }
+    .status.ok{ color:var(--ok); }
+    .status.bad{ color:var(--warn); }
+    .spin{
+      width:14px; height:14px; border-radius:999px;
+      border:2px solid rgba(17,24,39,.2);
+      border-top-color:rgba(17,24,39,.65);
+      animation:spin .8s linear infinite;
       display:none;
     }
-    .status.loading .spin { display:inline-block; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .status.loading .spin{ display:inline-block; }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
 
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
 
-    .list {
-      border:1px solid var(--bd); border-radius: 14px; overflow:hidden; background:#fff;
-      box-shadow: var(--shadow);
+    .list{
+      border:1px solid var(--bd); border-radius:14px; overflow:hidden; background:#fff;
+      box-shadow:var(--shadow);
     }
-    .list .head {
+    .list .head{
       padding:10px 12px; background:#fafafa; border-bottom:1px solid var(--bd);
-      font-weight: 700; font-size: 13px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:10px;
     }
-    .list .body { max-height: 420px; overflow:auto; scroll-behavior:smooth; }
-    .item {
-      padding:10px 12px; border-bottom:1px solid var(--bd); font-size: 14px;
+    .list .body{ max-height:420px; overflow:auto; scroll-behavior:smooth; }
+    .item{
+      padding:10px 12px; border-bottom:1px solid var(--bd); font-size:14px;
       display:flex; justify-content:space-between; gap:10px; cursor:pointer;
-      transition: background .12s ease;
+      transition:background .12s ease;
     }
-    .item:hover { background:#fafafa; }
-    .item:last-child { border-bottom: 0; }
-    .chip {
-      font-size: 12px; background: var(--chip); padding: 2px 8px; border-radius: 999px;
-      color: #374151; white-space:nowrap;
+    .item:hover{ background:#fafafa; }
+    .item:last-child{ border-bottom:0; }
+    .chip{
+      font-size:12px; background:var(--chip); padding:2px 8px; border-radius:999px;
+      color:#374151; white-space:nowrap;
     }
+    .empty{ color:var(--muted); font-size:13px; padding:12px; }
 
-    .empty { color: var(--muted); font-size: 13px; padding: 12px; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { border-bottom:1px solid var(--bd); padding: 10px 10px; text-align:left; font-size: 14px; }
-    th { font-size: 13px; color:#374151; background:#fafafa; position: sticky; top:0; z-index: 1; }
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ border-bottom:1px solid var(--bd); padding:10px 10px; text-align:left; font-size:14px; }
+    th{ font-size:13px; color:#374151; background:#fafafa; position:sticky; top:0; z-index:1; }
 
     /* 자동완성 */
-    .ac {
-      position:absolute; left:0; right:0; top: calc(100% + 8px);
-      border:1px solid var(--bd); border-radius: 14px; overflow:hidden; background:#fff;
-      box-shadow: var(--shadow);
+    .ac{
+      position:absolute; left:0; right:0; top:calc(100% + 8px);
+      border:1px solid var(--bd); border-radius:14px; overflow:hidden; background:#fff;
+      box-shadow:var(--shadow);
       display:none;
-      z-index: 10;
+      z-index:10;
     }
-    .acHead {
+    .acHead{
       padding:8px 10px; background:#fafafa; border-bottom:1px solid var(--bd);
       display:flex; justify-content:space-between; align-items:center; gap:10px;
-      font-size: 12px; color:#374151;
+      font-size:12px; color:#374151;
     }
-    .acBody { max-height: 260px; overflow:auto; }
-    .acRow {
+    .acBody{ max-height:260px; overflow:auto; }
+    .acRow{
       padding:10px 12px; border-bottom:1px solid var(--bd);
       display:flex; justify-content:space-between; gap:10px;
-      cursor:pointer; font-size: 14px;
+      cursor:pointer; font-size:14px;
     }
-    .acRow:last-child { border-bottom:0; }
-    .acRow:hover, .acRow.active { background:#f9fafb; }
-    mark {
-      background: rgba(253, 230, 138, .55);
-      padding: 0 2px;
-      border-radius: 4px;
+    .acRow:last-child{ border-bottom:0; }
+    .acRow:hover, .acRow.active{ background:#f9fafb; }
+    mark{
+      background:rgba(253,230,138,.55);
+      padding:0 2px;
+      border-radius:4px;
     }
-
-    details summary { cursor:pointer; color:#374151; font-weight:700; }
-    details .hint { margin-top:10px; }
-    code { background:#f3f4f6; padding: 1px 6px; border-radius: 6px; }
 
     /* 담당자 링크/패널 */
-    .personLink{ text-decoration: underline; cursor:pointer; color:#1f2937; }
+    .personLink{ text-decoration:underline; cursor:pointer; color:#1f2937; }
     .personLink:hover{ color:#111827; }
     .panelHead{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .panelTitle{ font-weight:800; }
     .panelMeta{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .miniBtn{ border:1px solid var(--bd); background:#fff; border-radius:10px; padding:6px 10px; font-size:12px; cursor:pointer; }
+    .miniBtn{
+      border:1px solid var(--bd); background:#fff; border-radius:10px;
+      padding:6px 10px; font-size:12px; cursor:pointer; text-decoration:none; color:var(--fg);
+    }
     .miniBtn:hover{ background:#fafafa; }
 
     /* 날짜 칩 */
@@ -129,6 +129,11 @@
     .mediaLabel{ font-size:12px; color:var(--muted); min-width:44px; padding-top:2px; }
     .mediaLinks{ display:flex; gap:6px; flex-wrap:wrap; }
     a.chipLink{ text-decoration:none; }
+    .btn{
+      border:1px solid var(--bd); background:#fff; border-radius:10px;
+      padding:6px 10px; font-size:12px; cursor:pointer;
+    }
+    .btn:hover{ background:#fafafa; }
   </style>
 </head>
 <body>
@@ -163,8 +168,7 @@
         <span class="spin" aria-hidden="true"></span>
         <span id="statusText"></span>
       </div>
-
-      </div>
+    </div>
 
     <div class="grid">
       <div class="list">
@@ -175,7 +179,12 @@
       <div class="list">
         <div class="head">검색 결과 (파트 / 담당자)</div>
         <div class="body">
-          <div class="empty" style="padding:10px 12px; border-bottom:1px solid var(--bd); background:#fff;">팁: <b>담당자 이름 클릭</b>하면 그 사람이 해본 곡 목록이 뜹니다.</div><div id="resultsEmpty" class="empty">검색어를 입력하면 결과가 나와요.</div>
+          <div class="empty" style="padding:10px 12px; border-bottom:1px solid var(--bd); background:#fff;">
+            팁: <b>담당자 이름 클릭</b>하면 그 사람이 해본 곡 목록이 뜹니다.
+          </div>
+
+          <div id="resultsEmpty" class="empty">검색어를 입력하면 결과가 나와요.</div>
+
           <table id="resultsTable" style="display:none;">
             <thead>
               <tr><th style="width:40%;">파트</th><th>담당자</th></tr>
@@ -183,11 +192,9 @@
             <tbody id="results"></tbody>
           </table>
 
-          
-
           <div id="mediaBox" class="mediaBox" style="display:none;">
             <div style="font-weight:800; margin-bottom:2px;">곡 자료</div>
-            <div class="hint" style="margin-top:4px;">악보/영상 링크가 있으면 여기 표시됩니다.</div>
+            <div class="hint" style="margin-top:4px;">악보/영상 링크가 있으면 여기 표시됩니다. (중복 링크는 자동 제거)</div>
 
             <div class="mediaRow" id="scoreRow" style="display:none;">
               <div class="mediaLabel">악보</div>
@@ -200,7 +207,7 @@
             </div>
           </div>
 
-<div id="metaBox" style="display:none; border-top:1px solid var(--bd); padding:12px;">
+          <div id="metaBox" style="display:none; border-top:1px solid var(--bd); padding:12px;">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
               <div>
                 <div style="font-weight:800; margin-bottom:4px;">곡 메모</div>
@@ -219,6 +226,34 @@
       </div>
     </div>
 
+    <!-- ===== 콘티 리스트(구글시트 탭) ===== -->
+    <div class="card" id="setlistsCard">
+      <div class="panelHead">
+        <div>
+          <div class="panelTitle">콘티 리스트</div>
+          <div class="hint" style="margin:6px 0 0;">
+            오늘하루도 화이팅 ! 
+          </div>
+        </div>
+        <!-- 시트 열기 버튼 삭제 -->
+      </div>
+
+      <div class="hint" style="margin-top:10px; font-weight:700;">리스트 선택</div>
+      <div id="slTabs" class="dateChips" style="margin-top:8px;"></div>
+
+      <div class="list" style="margin-top:12px;">
+        <div class="head">
+          <span id="slTitle">-</span>
+          <span class="chip" id="slCount">0</span>
+        </div>
+        <div class="body" id="slBody" style="max-height:360px;"></div>
+      </div>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+        <button class="miniBtn" id="slCopyBtn" type="button">복사</button>
+        <button class="miniBtn" id="slReloadBtn" type="button">새로고침</button>
+      </div>
+    </div>
 
     <div id="personPanel" class="card" style="display:none;">
       <div class="panelHead">
@@ -239,57 +274,102 @@
     </div>
 
 <script>
-  // 팀 게시용 고정 시트
+  // ====== 설정(네 시트) ======
   const FIXED_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1fyGPILf7sxYSBLx1gq7hFeZwV0enO0F3ufh-9DmbJp0/edit?gid=1851883768#gid=1851883768';
   const FIXED_GID = '1851883768';
   const FIXED_SHEET_NAME = 'DB';
-  // 곡별 메모/악보 탭 (시트에 META 탭을 만들면 자동 표시)
-  const META_SHEET_NAME = 'META';
 
-  // 텍스트 정규화: 공백/제로폭/BOM 제거 + 소문자
-  function norm(s) {
-    return (s ?? "").toString()
-      .replace(/[\s\u200B\u200C\u200D\uFEFF]+/g, "")
-      .toLowerCase();
+  // META 탭(선택) - 탭 이름이 META이면 자동 로드
+  const META_SHEET_NAME = 'META';
+  const META_GID = ''; // 모르면 비워두면 됨
+
+  // 콘티 탭 3개(반드시 이 이름으로 탭 생성)
+  const SETLIST_TABS = [
+    { key: "sunday", title: "주일 콘티", sheet: "주일콘티" },
+    { key: "winter2026", title: "2026 겨울수련회 콘티", sheet: "2026겨울수련회콘티" },
+    { key: "summer2026", title: "2026 여름수련회 콘티", sheet: "2026여름수련회콘티" },
+  ];
+
+  // ===== 유틸 =====
+  function norm(s){
+    return (s ?? "").toString().replace(/[\s\u200B\u200C\u200D\uFEFF]+/g, "").toLowerCase();
   }
   const trim = (s) => (s ?? "").toString().trim();
 
-  function normDate(d) {
-    const s0 = (d ?? "").toString();
-    const s = trim(s0);
+  function normDate(d){
+    const s = trim((d ?? "").toString());
     if (!s) return "";
-
-    // GVIZ 날짜가 Date(2026,0,4) 또는 2026,0,4 처럼 오는 케이스 처리 (월=0부터)
     let m = s.match(/Date\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/i);
     if (!m) m = s.match(/^(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/);
-    if (m) {
+    if (m){
       const y = m[1];
-      const mm = String(parseInt(m[2], 10) + 1).padStart(2, "0"); // 0-based month
-      const dd = String(parseInt(m[3], 10)).padStart(2, "0");
+      const mm = String(parseInt(m[2],10)+1).padStart(2,"0");
+      const dd = String(parseInt(m[3],10)).padStart(2,"0");
       return `${y}-${mm}-${dd}`;
     }
-
-    // YYYY.MM.DD / YYYY/MM/DD -> YYYY-MM-DD
     m = s.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
-    if (m) {
+    if (m){
       const y = m[1];
-      const mm = m[2].padStart(2, "0");
-      const dd = m[3].padStart(2, "0");
+      const mm = m[2].padStart(2,"0");
+      const dd = m[3].padStart(2,"0");
       return `${y}-${mm}-${dd}`;
     }
-
-    // 이미 YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
     return s;
   }
 
+  function escapeHTML(s){
+    return (s ?? "").toString()
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  function highlight(text, queryNorm){
+    if (!queryNorm) return escapeHTML(text);
+    const raw = (text ?? "").toString();
+    const rawNoSpace = raw.replace(/[\s\u200B\u200C\u200D\uFEFF]+/g, "");
+    const idx = rawNoSpace.toLowerCase().indexOf(queryNorm);
+    if (idx < 0) return escapeHTML(raw);
+
+    let start=-1, end=-1, count=0;
+    for (let i=0;i<raw.length;i++){
+      const ch=raw[i];
+      if (/[\s\u200B\u200C\u200D\uFEFF]/.test(ch)) continue;
+      if (count===idx) start=i;
+      if (count===idx+queryNorm.length-1){ end=i; break; }
+      count++;
+    }
+    if (start<0 || end<0) return escapeHTML(raw);
+    return escapeHTML(raw.slice(0,start)) + "<mark>" + escapeHTML(raw.slice(start,end+1)) + "</mark>" + escapeHTML(raw.slice(end+1));
+  }
+
+  function uniqueBy(arr, keyFn){
+    const seen = new Set();
+    const out = [];
+    for (const x of arr){
+      const k = keyFn(x);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(x);
+    }
+    return out;
+  }
+
+  function extractSheetId(url){
+    const m = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    return m ? m[1] : null;
+  }
+
+  // ===== DOM =====
   const elQ = document.getElementById("q");
   const elClear = document.getElementById("clear");
   const elSongs = document.getElementById("songs");
   const elSongCount = document.getElementById("songCount");
+
   const elResultsEmpty = document.getElementById("resultsEmpty");
   const elResultsTable = document.getElementById("resultsTable");
   const elResults = document.getElementById("results");
+
   const elMediaBox = document.getElementById("mediaBox");
   const elScoreRow = document.getElementById("scoreRow");
   const elVideoRow = document.getElementById("videoRow");
@@ -305,11 +385,11 @@
 
   const elStatus = document.getElementById("status");
   const elStatusText = document.getElementById("statusText");
-  const elDebug = document.getElementById("debug"); // 없으면 null
 
   const elAC = document.getElementById("ac");
   const elACBody = document.getElementById("acBody");
   const elACMeta = document.getElementById("acMeta");
+
   const elPersonPanel = document.getElementById("personPanel");
   const elPPName = document.getElementById("ppName");
   const elPPSongCount = document.getElementById("ppSongCount");
@@ -317,191 +397,35 @@
   const elPPBody = document.getElementById("ppBody");
   const elPPClose = document.getElementById("ppClose");
 
+  // setlist dom
+  const elSlTabs = document.getElementById("slTabs");
+  const elSlTitle = document.getElementById("slTitle");
+  const elSlCount = document.getElementById("slCount");
+  const elSlBody = document.getElementById("slBody");
+  const elSlCopyBtn = document.getElementById("slCopyBtn");
+  const elSlReloadBtn = document.getElementById("slReloadBtn");
 
-  function setStatus(msg, ok=true, loading=false) {
+  function setStatus(msg, ok=true, loading=false){
     elStatusText.textContent = msg;
     elStatus.className = "status " + (loading ? "loading" : "") + " " + (ok ? "ok" : "bad");
   }
 
-  function uniqueBy(arr, keyFn) {
-    const seen = new Set();
-    const out = [];
-    for (const x of arr) {
-      const k = keyFn(x);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push(x);
-    }
-    return out;
-  }
-
+  // ===== 데이터 =====
   let DB = [];
-  let META = new Map(); // songKey -> {scoreUrl, linkUrl, note, warn, song}
   let SONGS = [];
+  let META = new Map(); // songKey -> {song, scoreUrl, linkUrl, note, warn}
+  let LAST_MEDIA = { scores: new Set(), videos: new Set() };
 
-  function rebuildSongs() {
-    SONGS = uniqueBy(DB, r => r.songKey).map(r => r.song).sort((a,b) => a.localeCompare(b, "ko"));
+  // setlists
+  let activeSetlistKey = SETLIST_TABS[0].key;
+  let SETLIST_CACHE = new Map(); // key -> [songs...]
+
+  function rebuildSongs(){
+    SONGS = uniqueBy(DB, r => r.songKey).map(r => r.song).sort((a,b) => a.localeCompare(b,"ko"));
   }
 
-  function escapeHTML(s) {
-    return (s ?? "").toString()
-      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-  }
-
-  function highlight(text, queryNorm) {
-    if (!queryNorm) return escapeHTML(text);
-    const raw = (text ?? "").toString();
-    const q = queryNorm;
-    // 공백 무시 검색을 시각적으로 하이라이트하기 위해, 원본 문자열을 순회하며 매칭 위치를 잡기 어렵다.
-    // 대신 "공백 제거한 버전" 기준으로 대략적인 하이라이트: 간단/빠르게(곡명 길이 짧아서 실사용 OK)
-    const rawNoSpace = raw.replace(/[\s\u200B\u200C\u200D\uFEFF]+/g, "");
-    const idx = rawNoSpace.toLowerCase().indexOf(q);
-    if (idx < 0) return escapeHTML(raw);
-
-    // idx 위치를 원본에서 근사 매핑
-    let start = -1, end = -1;
-    let count = 0;
-    for (let i=0; i<raw.length; i++) {
-      const ch = raw[i];
-      const isSpace = /[\s\u200B\u200C\u200D\uFEFF]/.test(ch);
-      if (isSpace) continue;
-      if (count === idx) start = i;
-      if (count === idx + q.length - 1) { end = i; break; }
-      count++;
-    }
-    if (start < 0 || end < 0) return escapeHTML(raw);
-
-    const a = escapeHTML(raw.slice(0, start));
-    const b = escapeHTML(raw.slice(start, end+1));
-    const c = escapeHTML(raw.slice(end+1));
-    return a + "<mark>" + b + "</mark>" + c;
-  }
-
-  function renderSongList() {
-    const qn = norm(elQ.value);
-    const filtered = qn ? SONGS.filter(s => norm(s).includes(qn)) : SONGS;
-
-    elSongCount.textContent = filtered.length.toString();
-    elSongs.innerHTML = filtered.length ? "" : `<div class="empty">아직 곡 목록을 못 불러왔어요.</div>`;
-
-    filtered.slice(0, 400).forEach(song => {
-      const div = document.createElement("div");
-      div.className = "item";
-      div.innerHTML = `<span>${highlight(song, qn)}</span><span class="chip">클릭</span>`;
-      div.addEventListener("click", () => {
-        elQ.value = song;
-        closeAC();
-        renderAll();
-    hideMetaBox();
-        elQ.focus();
-      });
-      elSongs.appendChild(div);
-    });
-
-    if (filtered.length > 400) {
-      const more = document.createElement("div");
-      more.className = "empty";
-      more.textContent = "목록이 많아서 400개까지만 보여줘요. 검색어를 더 입력해 주세요.";
-      elSongs.appendChild(more);
-    }
-  }
-
-  function renderResults() {
-    const qn = norm(elQ.value);
-
-    // 검색어 없으면 결과표 숨김
-    if (!qn) {
-      elResultsTable.style.display = "none";
-      elResultsEmpty.style.display = "block";
-      elResultsEmpty.textContent = "검색어를 입력하면 결과가 나와요.";
-      elResults.innerHTML = "";
-      hideMediaBox();
-      return;
-    }
-
-    // 1) 부분일치 먼저 찾고
-    const matches = DB.filter(r => r.songKey.includes(qn));
-
-    // 2) 완전일치가 있으면 그걸 우선
-    const exact = matches.filter(r => r.songKey === qn);
-    const picked = exact.length ? exact : matches;
-
-    // 곡 자료(악보/영상)는 '완전일치'일 때만 표시
-    renderMediaForExactSong(exact);
-
-    // 3) (파트+담당자) 기준으로 묶고, 날짜는 칩으로 모아서 표시
-    const group = new Map(); // key -> {part, person, dates:Set}
-    for (const r of picked) {
-      const k = `${r.partKey}||${r.personKey}`;
-      if (!group.has(k)) group.set(k, { part: r.part, person: r.person, dates: new Set() });
-      const it = group.get(k);
-      const nd = normDate(r.date);
-      if (nd) it.dates.add(nd);
-    }
-
-    const rows = [...group.values()].sort((a,b) => a.part.localeCompare(b.part, "ko"));
-
-    elResults.innerHTML = "";
-    if (!rows.length) {
-      elResultsTable.style.display = "none";
-      elResultsEmpty.style.display = "block";
-      elResultsEmpty.textContent = "결과 없음";
-      return;
-    }
-
-    elResultsEmpty.style.display = "none";
-    elResultsTable.style.display = "table";
-
-    rows.forEach(r => {
-      const tr = document.createElement("tr");
-
-      const td1 = document.createElement("td");
-      td1.textContent = r.part;
-
-      const td2 = document.createElement("td");
-
-      const name = document.createElement("span");
-      name.className = "personLink";
-      name.textContent = r.person;
-      name.title = "클릭하면 이 담당자 참여곡 보기";
-      name.addEventListener("click", () => openPersonPanel(r.person));
-      td2.appendChild(name);
-
-      const dates = [...r.dates];
-      if (dates.length) {
-        dates.sort((a,b) => b.localeCompare(a)); // 최신 먼저
-        const wrap = document.createElement("div");
-        wrap.className = "dateChips";
-        dates.forEach(d => {
-          const chip = document.createElement("span");
-          chip.className = "chip dateChip";
-          chip.textContent = d;
-          wrap.appendChild(chip);
-        });
-        td2.appendChild(wrap);
-      }
-
-      tr.appendChild(td1);
-      tr.appendChild(td2);
-      elResults.appendChild(tr);
-    });
-  }
-
-  function renderAll() {
-    renderSongList();
-    renderResults();
-      renderMetaForSong();
-    renderAC(); // 자동완성도 같이
-  }
-
-  function extractSheetId(url) {
-    const m = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    return m ? m[1] : null;
-  }
-
-  // GVIZ JSONP
-  function loadGvizJSONP(url) {
+  // ===== GVIZ JSONP =====
+  function loadGvizJSONP(url){
     return new Promise((resolve, reject) => {
       const cbName = "__gviz_cb_" + Math.random().toString(36).slice(2);
       const timeout = setTimeout(() => {
@@ -510,16 +434,16 @@
       }, 12000);
 
       let script = null;
-      function cleanup() {
+      function cleanup(){
         clearTimeout(timeout);
-        try { delete window[cbName]; } catch(e) {}
+        try{ delete window[cbName]; }catch(e){}
         if (script && script.parentNode) script.parentNode.removeChild(script);
       }
 
       window[cbName] = (payload) => {
-        try {
+        try{
           cleanup();
-          if (payload && payload.status && payload.status !== "ok") {
+          if (payload && payload.status && payload.status !== "ok"){
             const msg = (payload.errors && payload.errors.length)
               ? payload.errors.map(e => e.message).join(" / ")
               : ("GVIZ status=" + payload.status);
@@ -530,7 +454,7 @@
           const cols = table.cols.map(c => (c.label || "").trim());
           const rows = table.rows.map(r => r.c.map(c => (c && c.v !== null && c.v !== undefined) ? String(c.v) : ""));
           resolve({ cols, rows });
-        } catch (e) {
+        }catch(e){
           reject(new Error("파싱 실패: " + e.message));
         }
       };
@@ -547,40 +471,38 @@
     });
   }
 
-  function findCol(headerNorm, candidates) {
-    for (const c of candidates) {
+  function findCol(headerNorm, candidates){
+    for (const c of candidates){
       const i = headerNorm.findIndex(h => h === c);
       if (i >= 0) return i;
     }
-    for (const c of candidates) {
+    for (const c of candidates){
       const i = headerNorm.findIndex(h => h.includes(c));
       if (i >= 0) return i;
     }
     return -1;
   }
 
-  function toDBWithHeaderRecovery(cols, rows) {
+  function toDBWithHeaderRecovery(cols, rows){
     const songKeys = ["곡명","노래","노래제목","제목","song","title","name"];
     const partKeys = ["파트악기","파트","악기","instrument","part","세션"];
     const personKeys = ["담당자","담당","연주자","멤버","이름","person","member"];
-    const dateKeys = ["날짜","일자","date","when","time","일시"];
+    const dateKeys = ["등록일","날짜","일자","date","when","time","일시"];
     const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"];
     const videoKeys = ["영상url","영상","video","youtube","유튜브"];
 
-    // 1) cols(label)로 매칭
     let header = cols.map(h => norm(h));
     let dataRows = rows;
 
     let idxSong = findCol(header, songKeys);
     let idxPart = findCol(header, partKeys);
     let idxPerson = findCol(header, personKeys);
-    let idxDate = findCol(header, dateKeys); // 없으면 -1(날짜 표시 안 함)
-    let idxScore = findCol(header, scoreKeys); // 악보 링크(선택)
-    let idxVideo = findCol(header, videoKeys); // 영상 링크(선택)
+    let idxDate = findCol(header, dateKeys);
+    let idxScore = findCol(header, scoreKeys);
+    let idxVideo = findCol(header, videoKeys);
 
-    // 2) cols가 비어있거나 이상하면, 첫 행을 헤더로 복구
     const labelsBad = header.every(h => !h || /^[a-z]$/.test(h));
-    if ((idxSong < 0 || idxPart < 0 || idxPerson < 0) && dataRows.length && labelsBad) {
+    if ((idxSong < 0 || idxPart < 0 || idxPerson < 0) && dataRows.length && labelsBad){
       const firstRowHeader = dataRows[0].map(v => norm(v));
       const s2 = findCol(firstRowHeader, songKeys);
       const p2 = findCol(firstRowHeader, partKeys);
@@ -588,21 +510,22 @@
       const d2 = findCol(firstRowHeader, dateKeys);
       const sc2 = findCol(firstRowHeader, scoreKeys);
       const vd2 = findCol(firstRowHeader, videoKeys);
-      if (s2 >= 0 && p2 >= 0 && m2 >= 0) {
+      if (s2 >= 0 && p2 >= 0 && m2 >= 0){
         header = firstRowHeader;
-        idxSong = s2; idxPart = p2; idxPerson = m2; idxDate = d2; idxScore = sc2; idxVideo = vd2;
+        idxSong = s2; idxPart = p2; idxPerson = m2;
+        idxDate = d2; idxScore = sc2; idxVideo = vd2;
         dataRows = dataRows.slice(1);
       }
     }
 
-    if (idxSong < 0 || idxPart < 0 || idxPerson < 0) {
+    if (idxSong < 0 || idxPart < 0 || idxPerson < 0){
       const seenCols = cols.filter(Boolean).slice(0, 12).join(", ") || "(빈 헤더)";
       const seenRow1 = (rows[0] ? rows[0].slice(0, 12).join(", ") : "(첫행 없음)");
       throw new Error("컬럼 매칭 실패\n감지된 헤더(label): " + seenCols + "\n첫 행(미리보기): " + seenRow1);
     }
 
     const out = [];
-    for (const r of dataRows) {
+    for (const r of dataRows){
       const song = trim(r[idxSong] ?? "");
       const part = trim(r[idxPart] ?? "");
       const person = trim(r[idxPerson] ?? "");
@@ -610,70 +533,18 @@
       const scoreUrl = (idxScore >= 0) ? trim(r[idxScore] ?? "") : "";
       const videoUrl = (idxVideo >= 0) ? trim(r[idxVideo] ?? "") : "";
       if (!song || !part || !person) continue;
-      out.push({ song, part, person, date, scoreUrl, videoUrl,
-        songKey: norm(song), partKey: norm(part), personKey: norm(person),
-        dateKey: norm(date), scoreKey: norm(scoreUrl), videoKey: norm(videoUrl) });
+
+      out.push({
+        song, part, person, date, scoreUrl, videoUrl,
+        songKey: norm(song),
+        partKey: norm(part),
+        personKey: norm(person),
+      });
     }
     return out;
   }
 
-
-  function openPersonPanel(personName) {
-    const pk = norm(personName);
-    if (!pk) return;
-
-    const rows = DB.filter(r => r.personKey === pk);
-
-    // 곡 단위로 묶기
-    const songMap = new Map(); // songKey -> {song, count, parts:Set}
-    for (const r of rows) {
-      const sk = r.songKey;
-      if (!songMap.has(sk)) songMap.set(sk, { song: r.song, count: 0, parts: new Set() });
-      const it = songMap.get(sk);
-      it.count += 1;
-      it.parts.add(r.part);
-    }
-
-    const songs = [...songMap.values()]
-      .sort((a,b) => a.song.localeCompare(b.song, "ko"));
-
-    elPPName.textContent = personName;
-    elPPSongCount.textContent = songs.length + "곡";
-    elPPRowCount.textContent = rows.length + "행";
-
-    elPPBody.innerHTML = "";
-    if (!songs.length) {
-      elPPBody.innerHTML = `<div class="empty">기록 없음</div>`;
-    } else {
-      songs.forEach(s => {
-        const div = document.createElement("div");
-        div.className = "item";
-        const parts = [...s.parts].join(", ");
-        const label = parts ? parts : "보기";
-        div.innerHTML = `<span>${escapeHTML(s.song)}</span><span class="chip">${escapeHTML(label)}</span>`;
-        div.addEventListener("click", () => {
-          elQ.value = s.song;
-          closeAC();
-          renderAll();
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        });
-        elPPBody.appendChild(div);
-      });
-    }
-
-    elPersonPanel.style.display = "block";
-    // 패널이 열려있으면 사용자가 다음 클릭으로 바로 쓰게
-  }
-
-  function closePersonPanel() {
-    elPersonPanel.style.display = "none";
-    elPPBody.innerHTML = "";
-  }
-
-
-  
-  function toMetaMapWithHeaderRecovery(cols, rows) {
-    // 기대 헤더: 곡명 / 악보URL / 메모 / 주의사항 / 링크(선택)
+  function toMetaMapWithHeaderRecovery(cols, rows){
     const songKeys = ["곡명","노래","노래제목","제목","song","title","name"];
     const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"];
     const noteKeys = ["메모","노트","note","memo","콘티메모","콘티"];
@@ -687,99 +558,84 @@
     let idxWarn = findCol(colLabels, warnKeys);
     let idxLink = findCol(colLabels, linkKeys);
 
-    // gviz가 A/B/C 처럼 나오면, 첫 줄(rows[0])을 헤더로 한 번 더 시도
     let startRow = 0;
-    if (idxSong < 0 && rows && rows.length) {
+    if (idxSong < 0 && rows && rows.length){
       const first = rows[0].map(v => norm(v));
-      const h2 = first;
-      const s2 = findCol(h2, songKeys);
-      if (s2 >= 0) {
+      const s2 = findCol(first, songKeys);
+      if (s2 >= 0){
         idxSong = s2;
-        idxScore = findCol(h2, scoreKeys);
-        idxNote = findCol(h2, noteKeys);
-        idxWarn = findCol(h2, warnKeys);
-        idxLink = findCol(h2, linkKeys);
-        startRow = 1; // 첫 줄은 헤더로 취급
+        idxScore = findCol(first, scoreKeys);
+        idxNote = findCol(first, noteKeys);
+        idxWarn = findCol(first, warnKeys);
+        idxLink = findCol(first, linkKeys);
+        startRow = 1;
       }
     }
 
     const m = new Map();
-    for (let i = startRow; i < rows.length; i++) {
+    for (let i=startRow;i<rows.length;i++){
       const r = rows[i];
       const song = trim(r[idxSong]);
       if (!song) continue;
       const key = norm(song);
 
       const scoreUrl = idxScore >= 0 ? trim(r[idxScore]) : "";
-      const linkUrl = idxLink >= 0 ? trim(r[idxLink]) : "";
-      const note = idxNote >= 0 ? trim(r[idxNote]) : "";
-      const warn = idxWarn >= 0 ? trim(r[idxWarn]) : "";
+      const linkUrl  = idxLink  >= 0 ? trim(r[idxLink])  : "";
+      const note     = idxNote  >= 0 ? trim(r[idxNote])  : "";
+      const warn     = idxWarn  >= 0 ? trim(r[idxWarn])  : "";
 
-      // 같은 곡이 여러 줄이면: 빈 값은 덮어쓰지 않고 유지
       const prev = m.get(key) || { song, scoreUrl:"", linkUrl:"", note:"", warn:"" };
       m.set(key, {
         song: prev.song || song,
         scoreUrl: prev.scoreUrl || scoreUrl,
         linkUrl: prev.linkUrl || linkUrl,
         note: prev.note || note,
-        warn: prev.warn || warn
+        warn: prev.warn || warn,
       });
     }
     return m;
   }
 
-  function hideMetaBox() {
-    elMetaBox.style.display = "none";
-    elMetaSong.textContent = "";
-    elMetaScoreBtn.style.display = "none";
-    elMetaLinkBtn.style.display = "none";
-    elMetaNote.textContent = "";
-    elMetaWarn.textContent = "";
-  }
-
-  function renderMetaForSong() {
+  // ===== 렌더: 왼쪽 목록 =====
+  function renderSongList(){
     const qn = norm(elQ.value);
-    if (!qn) { hideMetaBox(); return; }
+    const filtered = qn ? SONGS.filter(s => norm(s).includes(qn)) : SONGS;
 
-    // 완전일치일 때만 표시 (부분검색 중엔 안 띄움)
-    const meta = META.get(qn);
-    if (!meta) { hideMetaBox(); return; }
+    elSongCount.textContent = filtered.length.toString();
+    elSongs.innerHTML = filtered.length ? "" : `<div class="empty">아직 곡 목록을 못 불러왔어요.</div>`;
 
-    elMetaBox.style.display = "block";
-    elMetaSong.textContent = meta.song || elQ.value;
+    filtered.slice(0, 400).forEach(song => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `<span>${highlight(song, qn)}</span><span class="chip">클릭</span>`;
+      div.addEventListener("click", () => {
+        elQ.value = song;
+        closeAC();
+        renderAll();
+        elQ.focus();
+      });
+      elSongs.appendChild(div);
+    });
 
-    // 악보 버튼
-    if (meta.scoreUrl) {
-      elMetaScoreBtn.href = meta.scoreUrl;
-      elMetaScoreBtn.style.display = "inline-block";
-    } else {
-      elMetaScoreBtn.style.display = "none";
+    if (filtered.length > 400){
+      const more = document.createElement("div");
+      more.className = "empty";
+      more.textContent = "목록이 많아서 400개까지만 보여줘요. 검색어를 더 입력해 주세요.";
+      elSongs.appendChild(more);
     }
-
-    // 참고 링크 버튼
-    if (meta.linkUrl) {
-      elMetaLinkBtn.href = meta.linkUrl;
-      elMetaLinkBtn.style.display = "inline-block";
-    } else {
-      elMetaLinkBtn.style.display = "none";
-    }
-
-    elMetaNote.textContent = meta.note ? ("메모\n" + meta.note) : "";
-    elMetaWarn.textContent = meta.warn ? ("주의사항\n" + meta.warn) : "";
   }
 
-
-
-  function hideMediaBox() {
-    if (!elMediaBox || !elScoreRow || !elVideoRow || !elScoreLinks || !elVideoLinks) return;
+  // ===== 미디어(중복 제거) =====
+  function hideMediaBox(){
     elMediaBox.style.display = "none";
     elScoreRow.style.display = "none";
     elVideoRow.style.display = "none";
     elScoreLinks.innerHTML = "";
     elVideoLinks.innerHTML = "";
+    LAST_MEDIA = { scores: new Set(), videos: new Set() };
   }
 
-  function makeLinkChip(href, label) {
+  function makeLinkChip(href, label){
     const a = document.createElement("a");
     a.className = "chip chipLink";
     a.href = href;
@@ -789,112 +645,188 @@
     return a;
   }
 
-  function renderMediaForExactSong(exactRows) {
-    if (!elMediaBox || !elScoreRow || !elVideoRow || !elScoreLinks || !elVideoLinks) return;
-    if (!exactRows || !exactRows.length) { hideMediaBox(); return; }
+  function renderMediaForExactSong(exactRows){
+    if (!exactRows || !exactRows.length){ hideMediaBox(); return; }
+
+    const qn = norm(elQ.value);
+    const meta = META.get(qn);
 
     const scoreSet = new Set();
     const videoSet = new Set();
+
     exactRows.forEach(r => {
       if (trim(r.scoreUrl)) scoreSet.add(trim(r.scoreUrl));
       if (trim(r.videoUrl)) videoSet.add(trim(r.videoUrl));
     });
+    if (meta){
+      if (trim(meta.scoreUrl)) scoreSet.add(trim(meta.scoreUrl));
+      if (trim(meta.linkUrl))  videoSet.add(trim(meta.linkUrl));
+    }
 
     const scores = [...scoreSet];
     const videos = [...videoSet];
+    LAST_MEDIA = { scores: new Set(scores), videos: new Set(videos) };
 
-    if (!scores.length && !videos.length) { hideMediaBox(); return; }
+    if (!scores.length && !videos.length){ hideMediaBox(); return; }
 
     elMediaBox.style.display = "block";
 
-    if (scores.length) {
+    if (scores.length){
       elScoreRow.style.display = "flex";
       elScoreLinks.innerHTML = "";
-      scores.slice(0, 6).forEach((u, i) => {
+      scores.slice(0, 6).forEach((u,i) => {
         elScoreLinks.appendChild(makeLinkChip(u, scores.length === 1 ? "악보" : `악보 ${i+1}`));
       });
     } else {
       elScoreRow.style.display = "none";
-      elScoreLinks.innerHTML = "";
     }
 
-    if (videos.length) {
+    if (videos.length){
       elVideoRow.style.display = "flex";
       elVideoLinks.innerHTML = "";
-      videos.slice(0, 6).forEach((u, i) => {
+      videos.slice(0, 6).forEach((u,i) => {
         elVideoLinks.appendChild(makeLinkChip(u, videos.length === 1 ? "영상" : `영상 ${i+1}`));
       });
     } else {
       elVideoRow.style.display = "none";
-      elVideoLinks.innerHTML = "";
     }
   }
 
-  async function connect() {
-    const sheetId = extractSheetId(FIXED_SHEET_URL);
-    if (!sheetId) {
-      setStatus("시트 ID를 못 찾음(링크 형식 확인)", false);
+  // ===== META(중복 버튼 숨김) =====
+  function hideMetaBox(){
+    elMetaBox.style.display = "none";
+    elMetaSong.textContent = "";
+    elMetaScoreBtn.style.display = "none";
+    elMetaLinkBtn.style.display = "none";
+    elMetaNote.textContent = "";
+    elMetaWarn.textContent = "";
+  }
+
+  function renderMetaForSong(){
+    const qn = norm(elQ.value);
+    if (!qn){ hideMetaBox(); return; }
+
+    const meta = META.get(qn);
+    if (!meta){ hideMetaBox(); return; }
+
+    elMetaBox.style.display = "block";
+    elMetaSong.textContent = meta.song || elQ.value;
+
+    const sUrl = trim(meta.scoreUrl);
+    const lUrl = trim(meta.linkUrl);
+
+    if (sUrl && !LAST_MEDIA.scores.has(sUrl)){
+      elMetaScoreBtn.href = sUrl;
+      elMetaScoreBtn.style.display = "inline-block";
+    } else {
+      elMetaScoreBtn.style.display = "none";
+    }
+    if (lUrl && !LAST_MEDIA.videos.has(lUrl)){
+      elMetaLinkBtn.href = lUrl;
+      elMetaLinkBtn.style.display = "inline-block";
+    } else {
+      elMetaLinkBtn.style.display = "none";
+    }
+
+    elMetaNote.textContent = meta.note ? ("메모\n" + meta.note) : "";
+    elMetaWarn.textContent = meta.warn ? ("주의사항\n" + meta.warn) : "";
+  }
+
+  // ===== 오른쪽 결과 =====
+  function renderResults(){
+    const qn = norm(elQ.value);
+
+    if (!qn){
+      elResultsTable.style.display = "none";
+      elResultsEmpty.style.display = "block";
+      elResultsEmpty.textContent = "검색어를 입력하면 결과가 나와요.";
+      elResults.innerHTML = "";
+      hideMediaBox();
+      hideMetaBox();
       return;
     }
 
-    const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
-    const urlBySheet = base + "&sheet=" + encodeURIComponent(FIXED_SHEET_NAME);
-    const urlByGid = base + "&gid=" + encodeURIComponent(FIXED_GID);
-    if (elDebug) elDebug.innerHTML = "<div><b>시도1</b> (탭이름): <code>" + urlBySheet + "</code></div>" +
-      "<div style='margin-top:6px;'><b>시도2</b> (gid): <code>" + urlByGid + "</code></div>";
+    const matches = DB.filter(r => r.songKey.includes(qn));
+    const exact = matches.filter(r => r.songKey === qn);
+    const picked = exact.length ? exact : matches;
 
-    setStatus("데이터 불러오는 중…", true, true);
+    if (exact.length) renderMediaForExactSong(exact);
+    else hideMediaBox();
 
-    try {
-      // 1) 탭 이름 방식
-      try {
-        const p1 = await loadGvizJSONP(urlBySheet);
-        DB = toDBWithHeaderRecovery(p1.cols, p1.rows);
-      } catch (e1) {
-        // 2) gid 방식
-        const p2 = await loadGvizJSONP(urlByGid);
-        DB = toDBWithHeaderRecovery(p2.cols, p2.rows);
-      }
-
-      rebuildSongs();
-      // META(곡별 메모/악보) 탭도 있으면 같이 로드 (탭이름 -> gid 순서)
-      try {
-        const metaUrlBySheet = base + "&sheet=" + encodeURIComponent(META_SHEET_NAME);
-        const mp1 = await loadGvizJSONP(metaUrlBySheet);
-        META = toMetaMapWithHeaderRecovery(mp1.cols, mp1.rows);
-      } catch (e1) {
-        try {
-          const metaUrlByGid = base + "&gid=" + encodeURIComponent(META_GID);
-          const mp2 = await loadGvizJSONP(metaUrlByGid);
-          META = toMetaMapWithHeaderRecovery(mp2.cols, mp2.rows);
-        } catch (e2) {
-          META = new Map();
-        }
-      }
-
-      renderAll();
-      setStatus("연결 완료 (" + DB.length + "행)", true, false);
-    } catch (e) {
-      setStatus("연결 실패\n" + e.message, false, false);
+    const group = new Map();
+    for (const r of picked){
+      const k = `${r.partKey}||${r.personKey}`;
+      if (!group.has(k)) group.set(k, { part:r.part, person:r.person, dates:new Set() });
+      const it = group.get(k);
+      const nd = normDate(r.date);
+      if (nd) it.dates.add(nd);
     }
+
+    const rows = [...group.values()].sort((a,b) => a.part.localeCompare(b.part,"ko"));
+
+    elResults.innerHTML = "";
+    if (!rows.length){
+      elResultsTable.style.display = "none";
+      elResultsEmpty.style.display = "block";
+      elResultsEmpty.textContent = "결과 없음";
+      hideMetaBox();
+      return;
+    }
+
+    elResultsEmpty.style.display = "none";
+    elResultsTable.style.display = "table";
+
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+
+      const td1 = document.createElement("td");
+      td1.textContent = r.part;
+
+      const td2 = document.createElement("td");
+      const name = document.createElement("span");
+      name.className = "personLink";
+      name.textContent = r.person;
+      name.title = "클릭하면 이 담당자 참여곡 보기";
+      name.addEventListener("click", () => openPersonPanel(r.person));
+      td2.appendChild(name);
+
+      const dates = [...r.dates];
+      if (dates.length){
+        dates.sort((a,b) => b.localeCompare(a));
+        const wrap = document.createElement("div");
+        wrap.className = "dateChips";
+        dates.forEach(d => {
+          const chip = document.createElement("span");
+          chip.className = "chip dateChip";
+          chip.textContent = d;
+          wrap.appendChild(chip);
+        });
+        td2.appendChild(wrap);
+      }
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      elResults.appendChild(tr);
+    });
+
+    renderMetaForSong();
   }
 
-  // ===== 자동완성(부드럽게) =====
+  // ===== 자동완성 =====
   let acItems = [];
   let acIndex = -1;
 
-  function openAC() {
+  function openAC(){
     if (!acItems.length) return closeAC();
     elAC.style.display = "block";
-    elAC.setAttribute("aria-hidden", "false");
+    elAC.setAttribute("aria-hidden","false");
   }
-  function closeAC() {
+  function closeAC(){
     elAC.style.display = "none";
-    elAC.setAttribute("aria-hidden", "true");
+    elAC.setAttribute("aria-hidden","true");
     acIndex = -1;
   }
-
-  function scrollACIntoView() {
+  function scrollACIntoView(){
     const rows = elACBody.querySelectorAll(".acRow");
     const row = rows[acIndex];
     if (!row) return;
@@ -903,34 +835,25 @@
     if (top < elACBody.scrollTop) elACBody.scrollTop = top;
     else if (bottom > elACBody.scrollTop + elACBody.clientHeight) elACBody.scrollTop = bottom - elACBody.clientHeight;
   }
-
-  function chooseAC(i) {
+  function chooseAC(i){
     const item = acItems[i];
     if (!item) return;
     elQ.value = item;
     closeAC();
     renderAll();
-    renderMetaForSong();
     elQ.focus();
   }
-
-  function renderAC() {
+  function renderAC(){
     const qn = norm(elQ.value);
-
-    if (!qn) {
+    if (!qn){
       closeAC();
       elACBody.innerHTML = "";
       elACMeta.textContent = "0";
       return;
     }
-
     acItems = SONGS.filter(s => norm(s).includes(qn)).slice(0, 10);
     elACMeta.textContent = String(acItems.length);
-
-    if (!acItems.length) {
-      closeAC();
-      return;
-    }
+    if (!acItems.length) return closeAC();
 
     openAC();
     elACBody.innerHTML = "";
@@ -939,15 +862,13 @@
       row.className = "acRow" + (idx === acIndex ? " active" : "");
       row.innerHTML = `<span>${highlight(song, qn)}</span><span class="chip">Enter</span>`;
       row.addEventListener("mousedown", (e) => {
-        // blur 전에 선택되도록 mousedown 사용
         e.preventDefault();
         chooseAC(idx);
       });
       elACBody.appendChild(row);
     });
   }
-
-  function stepAC(dir) {
+  function stepAC(dir){
     if (elAC.style.display !== "block") return;
     if (!acItems.length) return;
     acIndex = acIndex + dir;
@@ -955,40 +876,246 @@
     if (acIndex >= acItems.length) acIndex = 0;
 
     const rows = elACBody.querySelectorAll(".acRow");
-    rows.forEach((r, i) => r.classList.toggle("active", i === acIndex));
+    rows.forEach((r,i) => r.classList.toggle("active", i === acIndex));
     scrollACIntoView();
   }
 
-  // ===== 이벤트 =====
-  elQ.addEventListener("input", () => {
-    renderAll();
+  // ===== 담당자 패널 =====
+  function openPersonPanel(personName){
+    const pk = norm(personName);
+    if (!pk) return;
+
+    const rows = DB.filter(r => r.personKey === pk);
+
+    const songMap = new Map();
+    for (const r of rows){
+      const sk = r.songKey;
+      if (!songMap.has(sk)) songMap.set(sk, { song:r.song, parts:new Set() });
+      songMap.get(sk).parts.add(r.part);
+    }
+
+    const songs = [...songMap.values()].sort((a,b) => a.song.localeCompare(b.song,"ko"));
+
+    elPPName.textContent = personName;
+    elPPSongCount.textContent = songs.length + "곡";
+    elPPRowCount.textContent = rows.length + "행";
+
+    elPPBody.innerHTML = "";
+    if (!songs.length){
+      elPPBody.innerHTML = `<div class="empty">기록 없음</div>`;
+    } else {
+      songs.forEach(s => {
+        const div = document.createElement("div");
+        div.className = "item";
+        const parts = [...s.parts].join(", ");
+        div.innerHTML = `<span>${escapeHTML(s.song)}</span><span class="chip">${escapeHTML(parts || "보기")}</span>`;
+        div.addEventListener("click", () => {
+          elQ.value = s.song;
+          closeAC();
+          renderAll();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+        elPPBody.appendChild(div);
+      });
+    }
+
+    elPersonPanel.style.display = "block";
+  }
+  function closePersonPanel(){
+    elPersonPanel.style.display = "none";
+    elPPBody.innerHTML = "";
+  }
+
+  // ===== 콘티(구글시트 탭에서 읽기) =====
+  function uniqSongs(arr){
+    const seen = new Set();
+    const out = [];
+    for (const s of arr){
+      const t = trim(s);
+      if (!t) continue;
+      const k = norm(t);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(t);
+    }
+    return out;
+  }
+
+  async function loadSetlistFromSheet(sheetName){
+    const sheetId = extractSheetId(FIXED_SHEET_URL);
+    const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
+    const tq = encodeURIComponent("select A where A is not null");
+    const url = base + "&sheet=" + encodeURIComponent(sheetName) + "&tq=" + tq;
+
+    const p = await loadGvizJSONP(url);
+    const songs = (p.rows || []).map(r => trim(r[0] ?? "")).filter(Boolean);
+
+    const cleaned = (songs[0] && norm(songs[0]) === norm("곡명")) ? songs.slice(1) : songs;
+    return uniqSongs(cleaned);
+  }
+
+  async function loadAllSetlists(){
+    for (const def of SETLIST_TABS){
+      try{
+        const songs = await loadSetlistFromSheet(def.sheet);
+        SETLIST_CACHE.set(def.key, songs);
+      } catch(e){
+        SETLIST_CACHE.set(def.key, []);
+      }
+    }
+  }
+
+  function slRenderTabs(){
+    elSlTabs.innerHTML = "";
+    SETLIST_TABS.forEach(def => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "miniBtn";
+      b.textContent = def.title;
+      b.style.borderRadius = "999px";
+      if (def.key === activeSetlistKey) b.style.fontWeight = "800";
+      b.addEventListener("click", () => {
+        activeSetlistKey = def.key;
+        slRenderTabs();
+        slRenderList();
+      });
+      elSlTabs.appendChild(b);
+    });
+  }
+
+  function slRenderList(){
+    const def = SETLIST_TABS.find(d => d.key === activeSetlistKey);
+    const arr = SETLIST_CACHE.get(activeSetlistKey) || [];
+
+    elSlTitle.textContent = def ? def.title : activeSetlistKey;
+    elSlCount.textContent = String(arr.length);
+
+    elSlBody.innerHTML = "";
+    if (!arr.length){
+      elSlBody.innerHTML = `<div class="empty">아직 곡이 없어요.</div>`;
+      return;
+    }
+
+    arr.forEach((song, idx) => {
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML = `<span><b style="margin-right:8px;">${idx+1}.</b>${escapeHTML(song)}</span><span class="chip">검색</span>`;
+      row.addEventListener("click", () => {
+        elQ.value = song;
+        closeAC();
+        renderAll();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      elSlBody.appendChild(row);
+    });
+  }
+
+  elSlCopyBtn.addEventListener("click", async () => {
+    const def = SETLIST_TABS.find(d => d.key === activeSetlistKey);
+    const a = SETLIST_CACHE.get(activeSetlistKey) || [];
+    const text = [(def ? def.title : activeSetlistKey), ...a.map((s,i) => `${i+1}. ${s}`)].join("\n");
+
+    try{
+      await navigator.clipboard.writeText(text);
+      setStatus("콘티를 클립보드에 복사했어요.", true, false);
+    } catch(e){
+      prompt("복사(Ctrl+C) 후 닫기", text);
+    }
   });
 
+  elSlReloadBtn.addEventListener("click", async () => {
+    setStatus("콘티 불러오는 중…", true, true);
+    await loadAllSetlists();
+    slRenderTabs();
+    slRenderList();
+    setStatus("콘티 새로고침 완료", true, false);
+  });
+
+  // ===== 전체 렌더 =====
+  function renderAll(){
+    renderSongList();
+    renderResults();
+    renderAC();
+    slRenderTabs();
+    slRenderList();
+  }
+
+  // ===== 연결(DB/META/SETLIST) =====
+  async function connect(){
+    const sheetId = extractSheetId(FIXED_SHEET_URL);
+    if (!sheetId){
+      setStatus("시트 ID를 못 찾음(링크 형식 확인)", false, false);
+      return;
+    }
+
+    const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
+    const urlBySheet = base + "&sheet=" + encodeURIComponent(FIXED_SHEET_NAME);
+    const urlByGid = base + "&gid=" + encodeURIComponent(FIXED_GID);
+
+    setStatus("데이터 불러오는 중…", true, true);
+
+    try{
+      try{
+        const p1 = await loadGvizJSONP(urlBySheet);
+        DB = toDBWithHeaderRecovery(p1.cols, p1.rows);
+      } catch(e1){
+        const p2 = await loadGvizJSONP(urlByGid);
+        DB = toDBWithHeaderRecovery(p2.cols, p2.rows);
+      }
+      rebuildSongs();
+
+      try{
+        const metaUrlBySheet = base + "&sheet=" + encodeURIComponent(META_SHEET_NAME);
+        const mp1 = await loadGvizJSONP(metaUrlBySheet);
+        META = toMetaMapWithHeaderRecovery(mp1.cols, mp1.rows);
+      } catch(e1){
+        if (META_GID){
+          try{
+            const metaUrlByGid = base + "&gid=" + encodeURIComponent(META_GID);
+            const mp2 = await loadGvizJSONP(metaUrlByGid);
+            META = toMetaMapWithHeaderRecovery(mp2.cols, mp2.rows);
+          } catch(e2){
+            META = new Map();
+          }
+        } else {
+          META = new Map();
+        }
+      }
+
+      await loadAllSetlists();
+
+      renderAll();
+      setStatus("연결 완료 (DB " + DB.length + "행 / 곡 " + SONGS.length + "개)", true, false);
+    } catch(e){
+      setStatus("연결 실패\n" + e.message + "\n\n※ 시트가 '웹에 게시' 또는 '링크 있는 사람 보기'가 아니면 읽을 수 없어요.", false, false);
+    }
+  }
+
+  // ===== 이벤트 =====
+  elQ.addEventListener("input", () => renderAll());
+
   elQ.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowDown") {
+    if (e.key === "ArrowDown"){
       e.preventDefault();
       if (elAC.style.display !== "block") renderAC();
       stepAC(+1);
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === "ArrowUp"){
       e.preventDefault();
       if (elAC.style.display !== "block") renderAC();
       stepAC(-1);
-    } else if (e.key === "Enter") {
-      if (elAC.style.display === "block" && acIndex >= 0) {
+    } else if (e.key === "Enter"){
+      if (elAC.style.display === "block" && acIndex >= 0){
         e.preventDefault();
         chooseAC(acIndex);
       }
-    } else if (e.key === "Escape") {
+    } else if (e.key === "Escape"){
       closeAC();
     }
   });
 
-  elQ.addEventListener("focus", () => {
-    renderAC();
-  });
+  elQ.addEventListener("focus", () => renderAC());
 
   document.addEventListener("click", (e) => {
-    // 자동완성 바깥 클릭 시 닫기
     if (!elAC.contains(e.target) && e.target !== elQ) closeAC();
   });
 
@@ -999,15 +1126,20 @@
     closeAC();
     closePersonPanel();
     hideMediaBox();
+    hideMetaBox();
     renderAll();
     elQ.focus();
   });
 
   // ===== 시작 =====
+  slRenderTabs();
+  slRenderList();
+
   setStatus("데이터 불러오는 중…", true, true);
   connect();
   renderAll();
   hideMediaBox();
+  hideMetaBox();
 </script>
 </body>
 </html>
