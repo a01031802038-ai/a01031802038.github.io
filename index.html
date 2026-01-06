@@ -1,3 +1,4 @@
+
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -200,6 +201,14 @@
       </div>
     </div>
 
+    <div class="card">
+      <div style="font-weight:700; margin-bottom:8px;">DB 시트 형식</div>
+      <div class="hint">
+        DB 탭 1행 헤더는 가능하면 이렇게: <code>곡명</code> / <code>파트(악기)</code> / <code>담당자</code><br/>
+        (v5는 헤더가 꼬여도 1행을 헤더로 다시 잡아서 최대한 복구합니다)
+      </div>
+    </div>
+  </div>
 
 <script>
   // 팀 게시용 고정 시트
@@ -343,13 +352,7 @@
     const exact = matches.filter(r => r.songKey === qn);
     const picked = exact.length ? exact : matches;
 
-    // 3) (파트+담당자) 기준 중복 제거 + 같은 조합이 여러 번 있으면 "n회"로 표시
-    const countMap = new Map();
-    for (const r of picked) {
-      const k = `${r.partKey}||${r.personKey}`;
-      countMap.set(k, (countMap.get(k) || 0) + 1);
-    }
-
+    // 3) (파트+담당자) 기준 중복 제거
     const uniq = uniqueBy(picked, r => `${r.partKey}||${r.personKey}`)
       .sort((a,b) => a.part.localeCompare(b.part, "ko"));
 
@@ -365,9 +368,6 @@
     elResultsTable.style.display = "table";
 
     uniq.forEach(r => {
-      const k = `${r.partKey}||${r.personKey}`;
-      const cnt = countMap.get(k) || 1;
-
       const tr = document.createElement("tr");
 
       const td1 = document.createElement("td");
@@ -382,14 +382,6 @@
       name.addEventListener("click", () => openPersonPanel(r.person));
 
       td2.appendChild(name);
-
-      if (cnt > 1) {
-        const badge = document.createElement("span");
-        badge.className = "chip";
-        badge.style.marginLeft = "8px";
-        badge.textContent = `${cnt}회`;
-        td2.appendChild(badge);
-      }
 
       tr.appendChild(td1);
       tr.appendChild(td2);
@@ -543,10 +535,8 @@
         const div = document.createElement("div");
         div.className = "item";
         const parts = [...s.parts].join(", ");
-        const right = [];
-        if (s.count > 1) right.push(`${s.count}행`);
-        if (parts) right.push(parts);
-        div.innerHTML = `<span>${escapeHTML(s.song)}</span><span class="chip">${escapeHTML(right.join(" · ") || "보기")}</span>`;
+        const label = parts ? parts : "보기";
+        div.innerHTML = `<span>${escapeHTML(s.song)}</span><span class="chip">${escapeHTML(label)}</span>`;
         div.addEventListener("click", () => {
           elQ.value = s.song;
           closeAC();
