@@ -571,25 +571,37 @@
     SONGS = uniqueBy(DB, r => r.songKey).map(r => r.song).sort((a,b) => a.localeCompare(b,"ko"));
   }
 
+  // ✅ FIX: 곡별 날짜 중복 제거(사람/파트별 여러 행 때문에 횟수 뻥튀기되는 문제 해결)
   function buildSongInfo(){
     SONG_INFO = new Map();
+
     for (const r of DB){
       const sk = r.songKey;
+
       if (!SONG_INFO.has(sk)){
-        SONG_INFO.set(sk, { song: r.song, lastTs: null, totalCount: 0, tsList: [] });
+        SONG_INFO.set(sk, {
+          song: r.song,
+          lastTs: null,
+          totalCount: 0,
+          tsSet: new Set(), // 날짜 중복 제거용
+          tsList: []
+        });
       }
+
       const it = SONG_INFO.get(sk);
       it.song = it.song || r.song;
       it.totalCount += 1;
 
       const ts = toDateTs(r.date);
       if (ts){
-        it.tsList.push(ts);
+        it.tsSet.add(ts); // 같은 날짜는 1번만
         if (!it.lastTs || ts > it.lastTs) it.lastTs = ts;
       }
     }
+
     for (const it of SONG_INFO.values()){
-      it.tsList.sort((a,b) => a - b);
+      it.tsList = Array.from(it.tsSet).sort((a,b) => a - b);
+      delete it.tsSet;
     }
   }
 
