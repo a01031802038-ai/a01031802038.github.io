@@ -72,7 +72,7 @@
     .item:last-child{ border-bottom:0; }
     .chip{
       font-size:12px; background:var(--chip); padding:2px 8px; border-radius:999px;
-      color:#374151; white-space:nowrap;
+      color:#374151; white-space:nowrap; border:1px solid transparent;
     }
     .chip.warn{ background: rgba(254,226,226,.9); color:#7f1d1d; }
     .chip.ok{ background: rgba(220,252,231,.9); color:#065f46; }
@@ -159,6 +159,41 @@
       outline:none;
     }
     select:focus{ border-color:#cbd5e1; box-shadow:0 0 0 4px rgba(148,163,184,.18); }
+
+    /* ✅ 송품 */
+    .poomWrap{ margin-top:10px; }
+    .poomDateRow{ display:flex; align-items:center; gap:8px; margin-top:12px; }
+    .poomDateRow:first-child{ margin-top:6px; }
+    .poomLines{ margin-top:6px; }
+    .poomLine{ margin-top:6px; line-height:1.6; }
+    .poomTag{
+      font-weight:900;
+      padding:1px 6px;
+      border-radius:999px;
+      border:1px solid var(--bd);
+      background:#fafafa;
+      margin-right:6px;
+      display:inline-block;
+      font-size:12px;
+      vertical-align:middle;
+    }
+    .poomTag.singer{ border-color: rgba(6,95,70,.25); }
+    .poomTag.inst{ border-color: rgba(17,24,39,.20); }
+    .poomText{ vertical-align:middle; }
+
+    /* ✅ 날짜 칩 클릭(필터) */
+    .chipBtn{
+      cursor:pointer;
+      border-color: var(--bd);
+      background:#fff;
+    }
+    .chipBtn:hover{ background:#fafafa; }
+    .chipBtn.active{
+      border-color:#cbd5e1;
+      box-shadow:0 0 0 4px rgba(148,163,184,.18);
+      font-weight:900;
+      background:#fff;
+    }
   </style>
 </head>
 <body>
@@ -262,7 +297,7 @@
 
           <div id="mediaBox" class="mediaBox" style="display:none;">
             <div style="font-weight:800; margin-bottom:2px;">곡 자료</div>
-            <div class="hint" style="margin-top:4px;">악보/영상 링크가 있으면 여기 표시됩니다. (중복 링크는 자동 제거)</div>
+            <div class="hint" style="margin-top:4px;">악보/영상 링크가 있으면 여기 표시됩니다.</div>
 
             <div class="mediaRow" id="scoreRow" style="display:none;">
               <div class="mediaLabel">악보</div>
@@ -275,10 +310,11 @@
             </div>
           </div>
 
+          <!-- ✅ 송품(날짜 클릭 가능) -->
           <div id="metaBox" style="display:none; border-top:1px solid var(--bd); padding:12px;">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
               <div>
-                <div style="font-weight:800; margin-bottom:4px;">곡 메모</div>
+                <div style="font-weight:900; margin-bottom:4px;">송품</div>
                 <div class="muted" id="metaSong"></div>
               </div>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -286,8 +322,15 @@
                 <a id="metaLinkBtn" class="btn" href="#" target="_blank" rel="noopener" style="display:none; text-decoration:none;">링크</a>
               </div>
             </div>
-            <div id="metaNote" class="hint" style="margin-top:10px; white-space:pre-wrap;"></div>
-            <div id="metaWarn" class="hint" style="margin-top:8px; white-space:pre-wrap;"></div>
+
+            <!-- 날짜 탭(클릭 필터) -->
+            <div id="poomDateTabs" class="dateChips" style="margin-top:10px;"></div>
+
+            <!-- 날짜별 내용 -->
+            <div id="poomByDate" class="poomWrap"></div>
+
+            <!-- META 공통(선택) -->
+            <div id="poomCommon" class="hint" style="margin-top:10px; white-space:pre-wrap;"></div>
           </div>
 
         </div>
@@ -299,7 +342,9 @@
       <div class="panelHead">
         <div>
           <div class="panelTitle">콘티 리스트</div>
-          <div class="hint" style="margin:6px 0 0;">오늘 하루도 화이팅!</div>
+          <div class="hint" style="margin:6px 0 0;">
+            오늘 하루도 화이팅!
+          </div>
         </div>
       </div>
 
@@ -474,9 +519,7 @@
     return m ? m[1] : null;
   }
 
-  function fmtYmd(ts){
-    return fmtYmdKST(ts);
-  }
+  function fmtYmd(ts){ return fmtYmdKST(ts); }
 
   // ===== DOM =====
   const elQ = document.getElementById("q");
@@ -499,8 +542,9 @@
   const elMetaSong = document.getElementById("metaSong");
   const elMetaScoreBtn = document.getElementById("metaScoreBtn");
   const elMetaLinkBtn = document.getElementById("metaLinkBtn");
-  const elMetaNote = document.getElementById("metaNote");
-  const elMetaWarn = document.getElementById("metaWarn");
+  const elPoomDateTabs = document.getElementById("poomDateTabs");
+  const elPoomByDate = document.getElementById("poomByDate");
+  const elPoomCommon = document.getElementById("poomCommon");
 
   const elStatus = document.getElementById("status");
   const elStatusText = document.getElementById("statusText");
@@ -544,13 +588,23 @@
   let DB = [];
   let META = new Map();
   let SONGS = [];
-  let SONG_INFO = new Map(); // songKey -> { song, lastTs, totalCount, tsList: number[] }
+  let SONG_INFO = new Map();
   let LAST_MEDIA = { scores: new Set(), videos: new Set() };
 
+  // ✅ 송품 상태(날짜 필터)
+  const POOM_STATE = {
+    lastSongKey: "",
+    selectedDate: "__all__", // "__all__" | "2026-01-01" | "날짜 없음"
+    byDate: new Map(),
+    dates: []
+  };
+
+  // filter state
   const FILTER_DEFAULT = { mode: "recent", weeks: 12, sort: "default" };
   let FILTER = { ...FILTER_DEFAULT };
   const FREQUENT_MIN_COUNT = 2;
 
+  // setlists
   let activeSetlistKey = SETLIST_TABS[0].key;
   let SETLIST_CACHE = new Map();
 
@@ -558,15 +612,22 @@
     SONGS = uniqueBy(DB, r => r.songKey).map(r => r.song).sort((a,b) => a.localeCompare(b,"ko"));
   }
 
-  // ✅ 곡별 날짜 중복 제거(파트/사람 여러 행으로 횟수 뻥튀기 방지)
   function buildSongInfo(){
     SONG_INFO = new Map();
 
     for (const r of DB){
       const sk = r.songKey;
+
       if (!SONG_INFO.has(sk)){
-        SONG_INFO.set(sk, { song: r.song, lastTs: null, totalCount: 0, tsSet: new Set(), tsList: [] });
+        SONG_INFO.set(sk, {
+          song: r.song,
+          lastTs: null,
+          totalCount: 0,
+          tsSet: new Set(),
+          tsList: []
+        });
       }
+
       const it = SONG_INFO.get(sk);
       it.song = it.song || r.song;
       it.totalCount += 1;
@@ -723,7 +784,6 @@
     return -1;
   }
 
-  // ✅ DB 파싱 (송품 컬럼까지)
   function toDBWithHeaderRecovery(cols, rows){
     const songKeys = ["곡명","노래","노래제목","제목","song","title","name"];
     const partKeys = ["파트악기","파트","악기","instrument","part","세션"];
@@ -731,8 +791,7 @@
     const dateKeys = ["등록일","날짜","일자","date","when","time","일시"];
     const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"];
     const videoKeys = ["영상url","영상","video","youtube","유튜브"];
-    // ✅ A안: DB에 "송품" 컬럼 추가하면 자동 인식
-    const pumKeys  = ["송품","songpum","포인트","point","메모","memo","주의","주의사항","유의사항"];
+    const poomKeys = ["송품","메모","노트","note","memo","주의","주의사항","유의사항","warn","warning"];
 
     let header = cols.map(h => norm(h));
     let dataRows = rows;
@@ -743,7 +802,7 @@
     let idxDate = findCol(header, dateKeys);
     let idxScore = findCol(header, scoreKeys);
     let idxVideo = findCol(header, videoKeys);
-    let idxPum = findCol(header, pumKeys);
+    let idxPoom = findCol(header, poomKeys);
 
     const labelsBad = header.every(h => !h || /^[a-z]$/.test(h));
     if ((idxSong < 0 || idxPart < 0 || idxPerson < 0) && dataRows.length && labelsBad){
@@ -754,11 +813,11 @@
       const d2 = findCol(firstRowHeader, dateKeys);
       const sc2 = findCol(firstRowHeader, scoreKeys);
       const vd2 = findCol(firstRowHeader, videoKeys);
-      const pu2 = findCol(firstRowHeader, pumKeys);
+      const po2 = findCol(firstRowHeader, poomKeys);
       if (s2 >= 0 && p2 >= 0 && m2 >= 0){
         header = firstRowHeader;
         idxSong = s2; idxPart = p2; idxPerson = m2;
-        idxDate = d2; idxScore = sc2; idxVideo = vd2; idxPum = pu2;
+        idxDate = d2; idxScore = sc2; idxVideo = vd2; idxPoom = po2;
         dataRows = dataRows.slice(1);
       }
     }
@@ -777,12 +836,12 @@
       const date = (idxDate >= 0) ? trim(r[idxDate] ?? "") : "";
       const scoreUrl = (idxScore >= 0) ? trim(r[idxScore] ?? "") : "";
       const videoUrl = (idxVideo >= 0) ? trim(r[idxVideo] ?? "") : "";
-      const songPum  = (idxPum  >= 0) ? trim(r[idxPum]  ?? "") : ""; // ✅ 송품
+      const songPoom = (idxPoom >= 0) ? trim(r[idxPoom] ?? "") : "";
+
       if (!song || !part || !person) continue;
 
       out.push({
-        song, part, person, date, scoreUrl, videoUrl,
-        songPum,
+        song, part, person, date, scoreUrl, videoUrl, songPoom,
         songKey: norm(song),
         partKey: norm(part),
         personKey: norm(person),
@@ -794,7 +853,7 @@
   function toMetaMapWithHeaderRecovery(cols, rows){
     const songKeys = ["곡명","노래","노래제목","제목","song","title","name"];
     const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"];
-    const noteKeys = ["메모","노트","note","memo","콘티메모","콘티"];
+    const noteKeys = ["메모","노트","note","memo","콘티메모","콘티","송품"];
     const warnKeys = ["주의사항","주의","warn","warning","주의점","유의사항"];
     const linkKeys = ["링크","url","영상","youtube","참고","reference"];
 
@@ -910,44 +969,202 @@
     }
   }
 
-  // ===== META(중복 버튼 숨김) =====
+  // ===== ✅ 송품(날짜 클릭 필터) =====
+  function resetPoomState(){
+    POOM_STATE.lastSongKey = "";
+    POOM_STATE.selectedDate = "__all__";
+    POOM_STATE.byDate = new Map();
+    POOM_STATE.dates = [];
+  }
+
   function hideMetaBox(){
     elMetaBox.style.display = "none";
     elMetaSong.textContent = "";
     elMetaScoreBtn.style.display = "none";
     elMetaLinkBtn.style.display = "none";
-    elMetaNote.textContent = "";
-    elMetaWarn.textContent = "";
+    elPoomDateTabs.innerHTML = "";
+    elPoomByDate.innerHTML = "";
+    elPoomCommon.textContent = "";
+    resetPoomState();
   }
 
-  function renderMetaForSong(){
-    const qn = norm(elQ.value);
-    if (!qn){ hideMetaBox(); return; }
+  function formatPoomTextToHTML(text){
+    const raw = (text ?? "").toString();
+    const lines = raw.split(/\r?\n/);
 
+    const out = [];
+    for (const line of lines){
+      const t = line.trim();
+      if (!t) continue;
+
+      let m = t.match(/^(싱어|보컬|vocal)\s*[:：]\s*(.*)$/i);
+      if (m){
+        out.push(
+          `<div class="poomLine"><span class="poomTag singer">${escapeHTML(m[1])}</span><span class="poomText">${escapeHTML(m[2] ?? "")}</span></div>`
+        );
+        continue;
+      }
+
+      m = t.match(/^(악기|연주|band|inst|instrument)\s*[:：]\s*(.*)$/i);
+      if (m){
+        out.push(
+          `<div class="poomLine"><span class="poomTag inst">${escapeHTML(m[1])}</span><span class="poomText">${escapeHTML(m[2] ?? "")}</span></div>`
+        );
+        continue;
+      }
+
+      out.push(`<div class="poomLine"><span class="poomText">${escapeHTML(t)}</span></div>`);
+    }
+
+    return out.join("");
+  }
+
+  function poomSortDates(dates){
+    return dates.slice().sort((a,b) => {
+      if (a === "날짜 없음") return 1;
+      if (b === "날짜 없음") return -1;
+      return b.localeCompare(a);
+    });
+  }
+
+  function renderPoomTabs(){
+    elPoomDateTabs.innerHTML = "";
+
+    const makeBtn = (label, value) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip chipBtn";
+      b.textContent = label;
+      b.classList.toggle("active", POOM_STATE.selectedDate === value);
+      b.addEventListener("click", () => {
+        POOM_STATE.selectedDate = value;
+        renderPoomTabs();
+        renderPoomBody();
+      });
+      return b;
+    };
+
+    elPoomDateTabs.appendChild(makeBtn("전체", "__all__"));
+    POOM_STATE.dates.forEach(d => elPoomDateTabs.appendChild(makeBtn(d, d)));
+  }
+
+  function renderPoomBody(){
+    elPoomByDate.innerHTML = "";
+
+    const sel = POOM_STATE.selectedDate;
+    const dates = POOM_STATE.dates;
+
+    const renderOneDate = (d) => {
+      const set = POOM_STATE.byDate.get(d);
+      const notes = Array.from(set || []);
+      if (!notes.length) return;
+
+      const dateRow = document.createElement("div");
+      dateRow.className = "poomDateRow";
+      dateRow.innerHTML = `<span class="chip dateChip">${escapeHTML(d)}</span>`;
+      elPoomByDate.appendChild(dateRow);
+
+      const linesWrap = document.createElement("div");
+      linesWrap.className = "poomLines";
+      linesWrap.innerHTML = notes.map(n => formatPoomTextToHTML(n)).join("");
+      elPoomByDate.appendChild(linesWrap);
+    };
+
+    if (sel !== "__all__"){
+      renderOneDate(sel);
+      if (!elPoomByDate.innerHTML){
+        elPoomByDate.innerHTML = `<div class="empty">해당 날짜의 송품이 없어요.</div>`;
+      }
+      return;
+    }
+
+    // 전체 보기
+    if (!dates.length){
+      elPoomByDate.innerHTML = `<div class="empty">송품이 아직 없어요.</div>`;
+      return;
+    }
+    dates.forEach(renderOneDate);
+  }
+
+  function renderPoomForExactSong(exactRows){
+    const qn = norm(elQ.value);
+    if (!qn || !exactRows || !exactRows.length){
+      hideMetaBox();
+      return;
+    }
+
+    // 곡이 바뀌면 날짜 선택 초기화
+    if (POOM_STATE.lastSongKey !== qn){
+      POOM_STATE.lastSongKey = qn;
+      POOM_STATE.selectedDate = "__all__";
+    }
+
+    const byDate = new Map(); // dateStr -> Set(notes)
+    for (const r of exactRows){
+      const poom = trim(r.songPoom);
+      if (!poom) continue;
+      const d = normDateStr(r.date) || "날짜 없음";
+      if (!byDate.has(d)) byDate.set(d, new Set());
+      byDate.get(d).add(poom);
+    }
+
+    const dates = poomSortDates(Array.from(byDate.keys()));
+
+    // META 공통(선택)
     const meta = META.get(qn);
-    if (!meta){ hideMetaBox(); return; }
+    const commonBlocks = [];
+    if (meta){
+      if (trim(meta.note)) commonBlocks.push(trim(meta.note));
+      if (trim(meta.warn)) commonBlocks.push(trim(meta.warn));
+    }
+
+    const hasAny = byDate.size > 0 || commonBlocks.length > 0 || (meta && (trim(meta.scoreUrl) || trim(meta.linkUrl)));
+    if (!hasAny){
+      hideMetaBox();
+      return;
+    }
+
+    // 상태 저장
+    POOM_STATE.byDate = byDate;
+    POOM_STATE.dates = dates;
+
+    // 선택된 날짜가 사라졌으면 전체로
+    if (POOM_STATE.selectedDate !== "__all__" && !byDate.has(POOM_STATE.selectedDate)){
+      POOM_STATE.selectedDate = "__all__";
+    }
 
     elMetaBox.style.display = "block";
-    elMetaSong.textContent = meta.song || elQ.value;
+    elMetaSong.textContent = meta?.song || elQ.value;
 
-    const sUrl = trim(meta.scoreUrl);
-    const lUrl = trim(meta.linkUrl);
+    // META 링크 버튼(미디어 박스에 이미 있으면 숨김)
+    if (meta){
+      const sUrl = trim(meta.scoreUrl);
+      const lUrl = trim(meta.linkUrl);
 
-    if (sUrl && !LAST_MEDIA.scores.has(sUrl)){
-      elMetaScoreBtn.href = sUrl;
-      elMetaScoreBtn.style.display = "inline-block";
+      if (sUrl && !LAST_MEDIA.scores.has(sUrl)){
+        elMetaScoreBtn.href = sUrl;
+        elMetaScoreBtn.style.display = "inline-block";
+      } else elMetaScoreBtn.style.display = "none";
+
+      if (lUrl && !LAST_MEDIA.videos.has(lUrl)){
+        elMetaLinkBtn.href = lUrl;
+        elMetaLinkBtn.style.display = "inline-block";
+      } else elMetaLinkBtn.style.display = "none";
     } else {
       elMetaScoreBtn.style.display = "none";
-    }
-    if (lUrl && !LAST_MEDIA.videos.has(lUrl)){
-      elMetaLinkBtn.href = lUrl;
-      elMetaLinkBtn.style.display = "inline-block";
-    } else {
       elMetaLinkBtn.style.display = "none";
     }
 
-    elMetaNote.textContent = meta.note ? ("메모\n" + meta.note) : "";
-    elMetaWarn.textContent = meta.warn ? ("주의사항\n" + meta.warn) : "";
+    renderPoomTabs();
+    renderPoomBody();
+
+    if (commonBlocks.length){
+      elPoomCommon.textContent = "공통 송품\n" + commonBlocks.join("\n\n");
+      elPoomCommon.style.display = "block";
+    } else {
+      elPoomCommon.textContent = "";
+      elPoomCommon.style.display = "none";
+    }
   }
 
   // ===== 오른쪽 결과 =====
@@ -968,24 +1185,21 @@
     const exact = matches.filter(r => r.songKey === qn);
     const picked = exact.length ? exact : matches;
 
-    if (exact.length) renderMediaForExactSong(exact);
-    else hideMediaBox();
+    if (exact.length){
+      renderMediaForExactSong(exact);
+      renderPoomForExactSong(exact);
+    } else {
+      hideMediaBox();
+      hideMetaBox();
+    }
 
-    // ✅ A안: 날짜칩 + 날짜별 송품을 같이 모아서 표시
     const group = new Map();
     for (const r of picked){
       const k = `${r.partKey}||${r.personKey}`;
-      if (!group.has(k)) group.set(k, { part:r.part, person:r.person, dates:new Set(), pums:new Map() });
-
+      if (!group.has(k)) group.set(k, { part:r.part, person:r.person, dates:new Set() });
       const it = group.get(k);
       const nd = normDateStr(r.date);
       if (nd) it.dates.add(nd);
-
-      const pum = trim(r.songPum);
-      if (nd && pum){
-        if (!it.pums.has(nd)) it.pums.set(nd, new Set());
-        it.pums.get(nd).add(pum);
-      }
     }
 
     const rows = [...group.values()].sort((a,b) => a.part.localeCompare(b.part,"ko"));
@@ -995,7 +1209,6 @@
       elResultsTable.style.display = "none";
       elResultsEmpty.style.display = "block";
       elResultsEmpty.textContent = "결과 없음";
-      hideMetaBox();
       return;
     }
 
@@ -1030,33 +1243,10 @@
         td2.appendChild(wrap);
       }
 
-      // ✅ 송품 표시(주의사항 단어 안 씀)
-      if (r.pums && r.pums.size){
-        const pumWrap = document.createElement("div");
-        pumWrap.className = "hint";
-        pumWrap.style.marginTop = "6px";
-        pumWrap.style.whiteSpace = "pre-wrap";
-
-        const dkeys = [...r.pums.keys()].sort((a,b) => b.localeCompare(a));
-
-        let html = `<div style="font-weight:700; margin:6px 0 4px;">송품</div>`;
-        dkeys.forEach(d => {
-          const notes = [...r.pums.get(d)];
-          notes.forEach(n => {
-            html += `<div>• <b>${escapeHTML(d)}</b> : ${escapeHTML(n)}</div>`;
-          });
-        });
-
-        pumWrap.innerHTML = html;
-        td2.appendChild(pumWrap);
-      }
-
       tr.appendChild(td1);
       tr.appendChild(td2);
       elResults.appendChild(tr);
     });
-
-    renderMetaForSong();
   }
 
   // ===== 왼쪽 곡 목록(필터 적용) =====
@@ -1383,6 +1573,7 @@
     setFilterMode(FILTER.mode);
   });
 
+  // ===== 전체 렌더 =====
   function renderAll(){
     renderSongList();
     renderResults();
@@ -1449,7 +1640,9 @@
   }
 
   // ===== 검색 이벤트 =====
-  elQ.addEventListener("input", () => { renderAll(); });
+  elQ.addEventListener("input", () => {
+    renderAll();
+  });
 
   elQ.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown"){
@@ -1501,3 +1694,9 @@
 </script>
 </body>
 </html>
+```
+
+---
+
+원하시는 동작이 “날짜 칩 누르면 **그 날짜 송품만** 나오게”가 아니라,
+**날짜 칩 누르면 그 날짜 섹션으로 스크롤 이동(전체는 유지)** 이걸 원한 거면 말해줘. 그 버전으로도 바로 바꿔줄게.
