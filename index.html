@@ -262,7 +262,7 @@
 
           <div id="mediaBox" class="mediaBox" style="display:none;">
             <div style="font-weight:800; margin-bottom:2px;">곡 자료</div>
-            <div class="hint" style="margin-top:4px;">악보/영상 링크가 있으면 여기 표시됩니다.</div>
+            <div class="hint" style="margin-top:4px;">악보/영상 링크가 있으면 여기 표시됩니다. (중복 링크는 자동 제거)</div>
 
             <div class="mediaRow" id="scoreRow" style="display:none;">
               <div class="mediaLabel">악보</div>
@@ -299,9 +299,7 @@
       <div class="panelHead">
         <div>
           <div class="panelTitle">콘티 리스트</div>
-          <div class="hint" style="margin:6px 0 0;">
-            오늘 하루도 화이팅!
-          </div>
+          <div class="hint" style="margin:6px 0 0;">오늘 하루도 화이팅!</div>
         </div>
       </div>
 
@@ -361,13 +359,11 @@
   const KST_TZ = "Asia/Seoul";
   const KST_OFFSET_HOURS = 9;
 
-  // 텍스트 정규화: 공백/제로폭/BOM 제거 + 소문자
   function norm(s){
     return (s ?? "").toString().replace(/[\s\u200B\u200C\u200D\uFEFF]+/g, "").toLowerCase();
   }
   const trim = (s) => (s ?? "").toString().trim();
 
-  // ✅ "지금"을 한국시간 기준으로 고정한 epoch(ms)
   function nowKSTTs(){
     const now = new Date();
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -387,11 +383,9 @@
     const mm = parseInt(map.minute, 10);
     const ss = parseInt(map.second, 10);
 
-    // map은 "KST 시각"이므로 UTC epoch로 바꿀 때 9시간 빼줌
     return Date.UTC(y, m - 1, d, hh - KST_OFFSET_HOURS, mm, ss);
   }
 
-  // ✅ epoch(ms)를 한국시간 YYYY-MM-DD로 출력
   function fmtYmdKST(ts){
     if (!ts) return "";
     return new Intl.DateTimeFormat("en-CA", {
@@ -406,7 +400,6 @@
     const s = trim((d ?? "").toString());
     if (!s) return "";
 
-    // GVIZ Date(2026,0,4) 또는 2026,0,4
     let m = s.match(/Date\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/i);
     if (!m) m = s.match(/^(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/);
     if (m){
@@ -416,7 +409,6 @@
       return `${y}-${mm}-${dd}`;
     }
 
-    // YYYY.MM.DD / YYYY/MM/DD -> YYYY-MM-DD
     m = s.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
     if (m){
       const y = m[1];
@@ -429,13 +421,11 @@
     return s;
   }
 
-  // ✅ DB 날짜(YYYY-MM-DD)는 "한국 달력 날짜"로 해석(해외 접속해도 동일)
   function toDateTs(v){
     const s = normDateStr(v);
     if (!s) return null;
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
       const [y, m, d] = s.split("-").map(n => parseInt(n,10));
-      // KST 자정(00:00)을 UTC로 환산 = 전날 15:00Z
       const ts = Date.UTC(y, m-1, d, -KST_OFFSET_HOURS, 0, 0);
       return Number.isFinite(ts) ? ts : null;
     }
@@ -484,7 +474,6 @@
     return m ? m[1] : null;
   }
 
-  // ✅ 표시도 한국시간 고정
   function fmtYmd(ts){
     return fmtYmdKST(ts);
   }
@@ -553,48 +542,38 @@
 
   // ===== 데이터 =====
   let DB = [];
-  let META = new Map(); // songKey -> {song, scoreUrl, linkUrl, note, warn}
-  let SONGS = [];       // 전체 곡명 목록 (DB 기반)
-  let SONG_INFO = new Map(); // songKey -> { song, lastTs, totalCount, tsList: number[] } (날짜 있는 기록만 tsList에 저장)
+  let META = new Map();
+  let SONGS = [];
+  let SONG_INFO = new Map(); // songKey -> { song, lastTs, totalCount, tsList: number[] }
   let LAST_MEDIA = { scores: new Set(), videos: new Set() };
 
-  // filter state
   const FILTER_DEFAULT = { mode: "recent", weeks: 12, sort: "default" };
   let FILTER = { ...FILTER_DEFAULT };
-  const FREQUENT_MIN_COUNT = 2; // “최근 자주 부른 곡” 기준(2회 이상)
+  const FREQUENT_MIN_COUNT = 2;
 
-  // setlists
   let activeSetlistKey = SETLIST_TABS[0].key;
-  let SETLIST_CACHE = new Map(); // key -> [songs...]
+  let SETLIST_CACHE = new Map();
 
   function rebuildSongs(){
     SONGS = uniqueBy(DB, r => r.songKey).map(r => r.song).sort((a,b) => a.localeCompare(b,"ko"));
   }
 
-  // ✅ FIX: 곡별 날짜 중복 제거(사람/파트별 여러 행 때문에 횟수 뻥튀기되는 문제 해결)
+  // ✅ 곡별 날짜 중복 제거(파트/사람 여러 행으로 횟수 뻥튀기 방지)
   function buildSongInfo(){
     SONG_INFO = new Map();
 
     for (const r of DB){
       const sk = r.songKey;
-
       if (!SONG_INFO.has(sk)){
-        SONG_INFO.set(sk, {
-          song: r.song,
-          lastTs: null,
-          totalCount: 0,
-          tsSet: new Set(), // 날짜 중복 제거용
-          tsList: []
-        });
+        SONG_INFO.set(sk, { song: r.song, lastTs: null, totalCount: 0, tsSet: new Set(), tsList: [] });
       }
-
       const it = SONG_INFO.get(sk);
       it.song = it.song || r.song;
       it.totalCount += 1;
 
       const ts = toDateTs(r.date);
       if (ts){
-        it.tsSet.add(ts); // 같은 날짜는 1번만
+        it.tsSet.add(ts);
         if (!it.lastTs || ts > it.lastTs) it.lastTs = ts;
       }
     }
@@ -605,7 +584,6 @@
     }
   }
 
-  // ✅ cutoff 계산의 '오늘'도 한국시간 고정
   function cutoffTsByWeeks(weeks){
     const nowTs = nowKSTTs();
     const ms = weeks * 7 * 24 * 60 * 60 * 1000;
@@ -622,7 +600,6 @@
     return tsList.length - lo;
   }
 
-  // ✅ 날짜 없는 곡도 결과에 포함(클릭 가능)
   function getFilteredSongKeys(){
     const cutoff = cutoffTsByWeeks(FILTER.weeks);
 
@@ -746,6 +723,7 @@
     return -1;
   }
 
+  // ✅ DB 파싱 (송품 컬럼까지)
   function toDBWithHeaderRecovery(cols, rows){
     const songKeys = ["곡명","노래","노래제목","제목","song","title","name"];
     const partKeys = ["파트악기","파트","악기","instrument","part","세션"];
@@ -753,6 +731,8 @@
     const dateKeys = ["등록일","날짜","일자","date","when","time","일시"];
     const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"];
     const videoKeys = ["영상url","영상","video","youtube","유튜브"];
+    // ✅ A안: DB에 "송품" 컬럼 추가하면 자동 인식
+    const pumKeys  = ["송품","songpum","포인트","point","메모","memo","주의","주의사항","유의사항"];
 
     let header = cols.map(h => norm(h));
     let dataRows = rows;
@@ -763,6 +743,7 @@
     let idxDate = findCol(header, dateKeys);
     let idxScore = findCol(header, scoreKeys);
     let idxVideo = findCol(header, videoKeys);
+    let idxPum = findCol(header, pumKeys);
 
     const labelsBad = header.every(h => !h || /^[a-z]$/.test(h));
     if ((idxSong < 0 || idxPart < 0 || idxPerson < 0) && dataRows.length && labelsBad){
@@ -773,10 +754,11 @@
       const d2 = findCol(firstRowHeader, dateKeys);
       const sc2 = findCol(firstRowHeader, scoreKeys);
       const vd2 = findCol(firstRowHeader, videoKeys);
+      const pu2 = findCol(firstRowHeader, pumKeys);
       if (s2 >= 0 && p2 >= 0 && m2 >= 0){
         header = firstRowHeader;
         idxSong = s2; idxPart = p2; idxPerson = m2;
-        idxDate = d2; idxScore = sc2; idxVideo = vd2;
+        idxDate = d2; idxScore = sc2; idxVideo = vd2; idxPum = pu2;
         dataRows = dataRows.slice(1);
       }
     }
@@ -795,10 +777,12 @@
       const date = (idxDate >= 0) ? trim(r[idxDate] ?? "") : "";
       const scoreUrl = (idxScore >= 0) ? trim(r[idxScore] ?? "") : "";
       const videoUrl = (idxVideo >= 0) ? trim(r[idxVideo] ?? "") : "";
+      const songPum  = (idxPum  >= 0) ? trim(r[idxPum]  ?? "") : ""; // ✅ 송품
       if (!song || !part || !person) continue;
 
       out.push({
         song, part, person, date, scoreUrl, videoUrl,
+        songPum,
         songKey: norm(song),
         partKey: norm(part),
         personKey: norm(person),
@@ -987,13 +971,21 @@
     if (exact.length) renderMediaForExactSong(exact);
     else hideMediaBox();
 
+    // ✅ A안: 날짜칩 + 날짜별 송품을 같이 모아서 표시
     const group = new Map();
     for (const r of picked){
       const k = `${r.partKey}||${r.personKey}`;
-      if (!group.has(k)) group.set(k, { part:r.part, person:r.person, dates:new Set() });
+      if (!group.has(k)) group.set(k, { part:r.part, person:r.person, dates:new Set(), pums:new Map() });
+
       const it = group.get(k);
       const nd = normDateStr(r.date);
       if (nd) it.dates.add(nd);
+
+      const pum = trim(r.songPum);
+      if (nd && pum){
+        if (!it.pums.has(nd)) it.pums.set(nd, new Set());
+        it.pums.get(nd).add(pum);
+      }
     }
 
     const rows = [...group.values()].sort((a,b) => a.part.localeCompare(b.part,"ko"));
@@ -1036,6 +1028,27 @@
           wrap.appendChild(chip);
         });
         td2.appendChild(wrap);
+      }
+
+      // ✅ 송품 표시(주의사항 단어 안 씀)
+      if (r.pums && r.pums.size){
+        const pumWrap = document.createElement("div");
+        pumWrap.className = "hint";
+        pumWrap.style.marginTop = "6px";
+        pumWrap.style.whiteSpace = "pre-wrap";
+
+        const dkeys = [...r.pums.keys()].sort((a,b) => b.localeCompare(a));
+
+        let html = `<div style="font-weight:700; margin:6px 0 4px;">송품</div>`;
+        dkeys.forEach(d => {
+          const notes = [...r.pums.get(d)];
+          notes.forEach(n => {
+            html += `<div>• <b>${escapeHTML(d)}</b> : ${escapeHTML(n)}</div>`;
+          });
+        });
+
+        pumWrap.innerHTML = html;
+        td2.appendChild(pumWrap);
       }
 
       tr.appendChild(td1);
@@ -1370,7 +1383,6 @@
     setFilterMode(FILTER.mode);
   });
 
-  // ===== 전체 렌더 =====
   function renderAll(){
     renderSongList();
     renderResults();
@@ -1437,9 +1449,7 @@
   }
 
   // ===== 검색 이벤트 =====
-  elQ.addEventListener("input", () => {
-    renderAll();
-  });
+  elQ.addEventListener("input", () => { renderAll(); });
 
   elQ.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown"){
