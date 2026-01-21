@@ -148,6 +148,7 @@
     .status.ok{ color:var(--ok); }
     .status.bad{ color:var(--warn); }
     .spin{
+oree{
       width:14px; height:14px; border-radius:999px;
       border:2px solid rgba(17,24,39,.2);
       border-top-color:rgba(17,24,39,.65);
@@ -507,25 +508,22 @@
       display:inline-flex;
       width:fit-content;
     }
+
+    /* ✅ 모바일 달력: 점 표시 */
+    .calDots{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .calDot{
+      width:8px; height:8px; border-radius:999px;
+      background: rgba(17,24,39,.35);
+      box-shadow: 0 0 0 4px rgba(17,24,39,.05);
+    }
+
     @media (max-width: 520px){
       .calCell{ min-height:96px; padding:7px; }
       .calChip{ padding:6px 7px; }
-    }
 
-    /* ✅ 캘린더 일정 칩 - 모바일에서 2줄 표시(안 짤리게) */
-    @media (max-width: 520px){
-      .calChip{
-        white-space: normal !important;     /* 줄바꿈 허용 */
-        overflow: hidden !important;
-
-        /* 2줄까지만 보여주고 넘치면 말줄임 */
-        display: -webkit-box !important;
-        -webkit-box-orient: vertical !important;
-        -webkit-line-clamp: 2 !important;
-
-        word-break: keep-all;              /* 한글 단어 중간 쪼개짐 방지 */
-        line-height: 1.25;
-      }
+      /* 모바일에서는 칩/더보기 숨기고 점만 */
+      .calEvents .calChip{ display:none !important; }
+      .calEvents .calMore{ display:none !important; }
     }
   </style>
 </head>
@@ -820,8 +818,8 @@
   // 공지 탭
   const NOTICE_SHEET_NAME = "공지사항";
 
-  // ✅ 캘린더 탭(달력형) — 시트 탭 이름만 맞춰두면 됨
-  const CALENDAR_SHEET_NAME = "캘린더"; // 예: "일정", "calendar" 등으로 쓰면 여기만 변경
+  // ✅ 캘린더 탭(달력형)
+  const CALENDAR_SHEET_NAME = "캘린더";
 
   // ===== 유틸 =====
   const KST_TZ = "Asia/Seoul";
@@ -868,12 +866,10 @@
     }).format(new Date(ts));
   }
 
-  // ✅ 날짜 파서: Date(YYYY,MM,DD)는 월이 0-base라 +1, "YYYY,MM,DD"는 그대로
   function normDateStr(d){
     const s = trim((d ?? "").toString());
     if (!s) return "";
 
-    // Date(2026, 1, 1) 형태 (Google GVIZ)
     let m = s.match(/Date\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/i);
     if (m){
       const y = m[1];
@@ -882,7 +878,6 @@
       return `${y}-${mm}-${dd}`;
     }
 
-    // 2026,02,01 형태 → +1 하면 안 됨
     m = s.match(/^(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/);
     if (m){
       const y = m[1];
@@ -891,7 +886,6 @@
       return `${y}-${mm}-${dd}`;
     }
 
-    // 2026-02-01 / 2026.02.01 / 2026/02/01
     m = s.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
     if (m){
       const y = m[1];
@@ -1141,11 +1135,11 @@
   let NOTICE_FROM_SHEET = true;
 
   // 캘린더
-  let CAL_CACHE = [];               // [{date,title,body,link}]
-  let CAL_BY_DATE = new Map();      // ymd -> events[]
+  let CAL_CACHE = [];
+  let CAL_BY_DATE = new Map();
   let CAL_MONTH = (() => {
     const p = nowKSTParts();
-    return { y: p.y, m: p.m - 1 }; // 0-base
+    return { y: p.y, m: p.m - 1 };
   })();
 
   function rebuildSongs(){
@@ -1982,7 +1976,7 @@
     const sheetId = extractSheetId(FIXED_SHEET_URL);
     const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
     const tq = encodeURIComponent("select A,B where A is not null or B is not null");
-    const url = base + "&sheet=" + encodeURIComponent(sheetName) + "&tq=" + encodeURIComponent("select A,B where A is not null or B is not null");
+    const url = base + "&sheet=" + encodeURIComponent(sheetName) + "&tq=" + tq;
 
     const p = await loadGvizJSONP(url);
 
@@ -2324,7 +2318,6 @@
       }
     }
 
-    // 기본 A=날짜 B=제목 C=내용 D=링크
     if (idxDate  < 0) idxDate  = 0;
     if (idxTitle < 0) idxTitle = 1;
     if (idxBody  < 0) idxBody  = 2;
@@ -2350,7 +2343,6 @@
 
     list = list.filter(x => !isHeaderLikeCalendar(x));
 
-    // 날짜 없는 건 뒤로
     list.sort((a,b) => {
       const ad = normDateStr(a.date);
       const bd = normDateStr(b.date);
@@ -2378,7 +2370,6 @@
   }
 
   function weekdayIndexKST(y, m0, d){
-    // KST 기준 요일
     const dt = new Date(Date.UTC(y, m0, d, 0, 0, 0));
     const w = new Intl.DateTimeFormat("en-US", { timeZone: KST_TZ, weekday: "short" }).format(dt);
     const map = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
@@ -2392,7 +2383,6 @@
   }
 
   function renderCalendar(){
-    // 카운트: 이번 달 일정 수
     const y = CAL_MONTH.y;
     const m0 = CAL_MONTH.m;
 
@@ -2410,15 +2400,14 @@
 
     elCalCells.innerHTML = "";
 
-    const firstW = weekdayIndexKST(y, m0, 1); // 0=일
-    const dimPrevDays = firstW;
+    const firstW = weekdayIndexKST(y, m0, 1);
+    const dimCount = firstW;
+    const dimPrevDays = dimCount;
 
-    // prev month
     const prevY = (m0 === 0) ? (y - 1) : y;
     const prevM = (m0 === 0) ? 11 : (m0 - 1);
     const prevLast = daysInMonthUTC(prevY, prevM);
 
-    // current month days
     const curLast = daysInMonthUTC(y, m0);
 
     const totalCells = 42;
@@ -2426,6 +2415,8 @@
       const p = nowKSTParts();
       return ymd(p.y, p.m-1, p.d);
     })();
+
+    const isMobile = window.matchMedia("(max-width: 520px)").matches;
 
     for (let i=0;i<totalCells;i++){
       let cellY=y, cellM=m0, cellD=0;
@@ -2463,24 +2454,46 @@
       eventsWrap.className = "calEvents";
 
       if (evs.length){
-        const maxShow = 3;
-        evs.slice(0, maxShow).forEach(ev => {
-          const chip = document.createElement("div");
-          chip.className = "calChip";
-          chip.title = ev.title || "일정";
-          chip.textContent = (ev.title || "일정").toString();
-          chip.addEventListener("click", (e) => {
-            e.stopPropagation();
-            openCalendarEventModal(ev, dKey);
-          });
-          eventsWrap.appendChild(chip);
-        });
+        if (isMobile){
+          const dots = document.createElement("div");
+          dots.className = "calDots";
 
-        if (evs.length > maxShow){
-          const more = document.createElement("div");
-          more.className = "calMore";
-          more.textContent = `+${evs.length - maxShow}`;
-          eventsWrap.appendChild(more);
+          const maxDots = 4;
+          for (let k=0; k<Math.min(maxDots, evs.length); k++){
+            const d = document.createElement("span");
+            d.className = "calDot";
+            dots.appendChild(d);
+          }
+
+          if (evs.length > maxDots){
+            const more = document.createElement("span");
+            more.className = "chip";
+            more.textContent = `+${evs.length - maxDots}`;
+            more.style.padding = "3px 7px";
+            dots.appendChild(more);
+          }
+
+          eventsWrap.appendChild(dots);
+        } else {
+          const maxShow = 3;
+          evs.slice(0, maxShow).forEach(ev => {
+            const chip = document.createElement("div");
+            chip.className = "calChip";
+            chip.title = ev.title || "일정";
+            chip.textContent = (ev.title || "일정").toString();
+            chip.addEventListener("click", (e) => {
+              e.stopPropagation();
+              openCalendarEventModal(ev, dKey);
+            });
+            eventsWrap.appendChild(chip);
+          });
+
+          if (evs.length > maxShow){
+            const more = document.createElement("div");
+            more.className = "calMore";
+            more.textContent = `+${evs.length - maxShow}`;
+            eventsWrap.appendChild(more);
+          }
         }
       }
 
@@ -2776,6 +2789,11 @@
   renderAll();
   hideMediaBox();
   hideMetaBox();
+
+  // 화면 회전/리사이즈 시 모바일/PC 렌더링 즉시 반영
+  window.addEventListener("resize", () => {
+    renderCalendar();
+  });
 </script>
 </body>
 </html>
