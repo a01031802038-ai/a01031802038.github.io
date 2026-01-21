@@ -90,7 +90,6 @@
       color:#374151;
       border:1px solid transparent;
       white-space:nowrap;
-      user-select:none;
     }
     .chip.ok{ background: rgba(220,252,231,.9); color:var(--ok); }
     .chip.warn{ background: rgba(254,226,226,.9); color:var(--warn); }
@@ -109,7 +108,6 @@
       gap:8px;
       user-select:none;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
     }
     .miniBtn:hover, .btn:hover, .clearBtn:hover{ background:#fafafa; }
     .miniBtn.active{
@@ -184,7 +182,6 @@
       max-height: 420px;
       overflow:auto;
       scroll-behavior:smooth;
-      -webkit-overflow-scrolling: touch;
     }
     .item{
       padding:10px 12px;
@@ -196,7 +193,6 @@
       cursor:pointer;
       transition:background .12s ease;
       background:#fff;
-      touch-action: manipulation;
     }
     .item:hover{ background:#fafafa; }
     .item:last-child{ border-bottom:0; }
@@ -217,7 +213,7 @@
       background:#fff;
       box-shadow: var(--shadow2);
       display:none;
-      z-index:20;
+      z-index:10;
     }
     .acHead{
       padding:8px 10px;
@@ -230,14 +226,13 @@
       font-size:12px;
       color:#374151;
     }
-    .acBody{ max-height:260px; overflow:auto; -webkit-overflow-scrolling: touch; }
+    .acBody{ max-height:260px; overflow:auto; }
     .acRow{
       padding:10px 12px;
       border-bottom:1px solid rgba(17,24,39,.10);
       display:flex; justify-content:space-between; gap:10px;
       cursor:pointer; font-size:14px;
       background:#fff;
-      touch-action: manipulation;
     }
     .acRow:last-child{ border-bottom:0; }
     .acRow:hover, .acRow.active{ background:#f9fafb; }
@@ -256,17 +251,11 @@
     .dateChips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
     .dateChip{ font-size:12px; }
 
-    .mediaBox{
-      border-top:1px solid rgba(17,24,39,.10);
-      padding:12px;
-      background:#fff;
-      position:relative;
-      z-index:5; /* ✅ 모바일 탭 우선 */
-    }
+    .mediaBox{ border-top:1px solid rgba(17,24,39,.10); padding:12px; background:#fff; }
     .mediaRow{ display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; margin-top:8px; }
     .mediaLabel{ font-size:12px; color:var(--muted); min-width:44px; padding-top:2px; }
-    .mediaLinks{ display:flex; gap:6px; flex-wrap:wrap; position:relative; z-index:6; }
-    a.chipLink{ text-decoration:none; cursor:pointer; pointer-events:auto; touch-action: manipulation; }
+    .mediaLinks{ display:flex; gap:6px; flex-wrap:wrap; }
+    a.chipLink{ text-decoration:none; }
 
     .filterRow{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
@@ -281,7 +270,6 @@
       background:#fff;
       cursor:pointer;
       outline:none;
-      touch-action: manipulation;
     }
     select:focus{
       border-color: rgba(122,162,255,.65);
@@ -312,7 +300,6 @@
       cursor:pointer;
       border-color: rgba(17,24,39,.14);
       background:#fff;
-      touch-action: manipulation;
     }
     .chipBtn:hover{ background:#fafafa; }
     .chipBtn.active{
@@ -353,7 +340,6 @@
       gap:8px;
       -webkit-tap-highlight-color: transparent;
       user-select:none;
-      touch-action: manipulation;
     }
     .navBtn.active{
       background: rgba(122,162,255,.20);
@@ -403,6 +389,18 @@
 
     .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     .divider{ height:1px; background: rgba(17,24,39,.10); margin:10px 0; }
+
+    /* ✅ 모바일에서 "검색 결과" 박스 내부 스크롤 제거 → 페이지 스크롤로 내려가게 */
+    @media (max-width: 900px){
+      #resultPaneBody{
+        max-height: none !important;
+        overflow: visible !important;
+        padding-bottom: 24px;
+      }
+      #resultPaneBody th{
+        position: static !important;
+      }
+    }
   </style>
 </head>
 
@@ -493,7 +491,8 @@
 
         <div class="list">
           <div class="head">검색 결과</div>
-          <div class="body">
+          <!-- ✅ 모바일 스크롤/클릭 문제 해결용 id -->
+          <div class="body" id="resultPaneBody">
             <div id="resultsEmpty" class="empty">검색어를 입력해 주세요.</div>
 
             <table id="resultsTable" style="display:none;">
@@ -642,14 +641,14 @@
   const META_SHEET_NAME = 'META';
   const META_GID = ''; // 모르면 비워두면 됨
 
-  // 콘티 탭 3개(이 이름으로 탭 생성)
+  // 콘티 탭 3개
   const SETLIST_TABS = [
     { key: "sunday", title: "주일 콘티", sheet: "주일콘티" },
     { key: "winter2026", title: "2026 겨울수련회 콘티", sheet: "2026겨울수련회콘티" },
     { key: "summer2026", title: "2026 여름수련회 콘티", sheet: "2026여름수련회콘티" },
   ];
 
-  // 공지 탭(선택) : A=제목, B=내용, C=링크(선택), D=날짜(선택)
+  // 공지 탭(선택)
   const NOTICE_SHEET_NAME = "공지사항";
 
   // ===== 유틸 =====
@@ -660,15 +659,6 @@
     return (s ?? "").toString().replace(/[\s\u200B\u200C\u200D\uFEFF]+/g, "").toLowerCase();
   }
   const trim = (s) => (s ?? "").toString().trim();
-
-  function snippet(text, n=70){
-    const t = trim(text)
-      .replace(/https?:\/\/\S+/gi, "")   // ✅ 내용에 URL이 섞여도 목록에서 안 보이게
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!t) return "";
-    return t.length > n ? (t.slice(0, n) + "…") : t;
-  }
 
   function nowKSTTs(){
     const now = new Date();
@@ -702,27 +692,22 @@
     }).format(new Date(ts));
   }
 
-  // ✅ 날짜 문자열을 "YYYY-MM-DD"로 최대한 안정적으로 정규화
+  // ✅ 날짜 파서 수정: Date(YYYY,MM,DD)는 월이 0-base라 +1, "YYYY,MM,DD"는 그대로
   function normDateStr(d){
-    const s0 = trim((d ?? "").toString());
-    if (!s0) return "";
+    const s = trim((d ?? "").toString());
+    if (!s) return "";
 
-    // 1) Google GViz가 주는 Date(YYYY,MM,DD) (MM은 0~11)
-    let m = s0.match(/Date\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/i);
+    // Date(2026, 1, 1) 형태 (Google GVIZ)
+    let m = s.match(/Date\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/i);
     if (m){
-      const y = parseInt(m[1],10);
-      const mm0 = parseInt(m[2],10);     // 0-based
-      const dd = parseInt(m[3],10);
-      const mm = String(mm0 + 1).padStart(2,"0");
-      const d2 = String(dd).padStart(2,"0");
-      return `${y}-${mm}-${d2}`;
+      const y = m[1];
+      const mm = String(parseInt(m[2],10)+1).padStart(2,"0"); // ✅ Date()는 0-base
+      const dd = String(parseInt(m[3],10)).padStart(2,"0");
+      return `${y}-${mm}-${dd}`;
     }
 
-    // 2) "YYYY-MM-DD" (이미 정상)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s0)) return s0;
-
-    // 3) "YYYY.MM.DD" / "YYYY/MM/DD" / "YYYY-M-D"
-    m = s0.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+    // 2026,02,01 형태 (사용자가 직접 입력했을 수 있음) → ✅ +1 하면 안 됨
+    m = s.match(/^(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/);
     if (m){
       const y = m[1];
       const mm = String(parseInt(m[2],10)).padStart(2,"0");
@@ -730,16 +715,17 @@
       return `${y}-${mm}-${dd}`;
     }
 
-    // 4) "YYYY,MM,DD" (보통 사람이 적은 값: 1~12 기준으로 처리)
-    m = s0.match(/^(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/);
+    // 2026-02-01 / 2026.02.01 / 2026/02/01
+    m = s.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
     if (m){
       const y = m[1];
-      const mm = String(parseInt(m[2],10)).padStart(2,"0");
-      const dd = String(parseInt(m[3],10)).padStart(2,"0");
+      const mm = m[2].padStart(2,"0");
+      const dd = m[3].padStart(2,"0");
       return `${y}-${mm}-${dd}`;
     }
 
-    return s0;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    return s;
   }
 
   function toDateTs(v){
@@ -747,7 +733,6 @@
     if (!s) return null;
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
       const [y, m, d] = s.split("-").map(n => parseInt(n,10));
-      // KST 기준 날짜를 UTC로 옮겨 저장(표시할 때 KST로 다시 포맷)
       const ts = Date.UTC(y, m-1, d, -KST_OFFSET_HOURS, 0, 0);
       return Number.isFinite(ts) ? ts : null;
     }
@@ -1122,13 +1107,13 @@
   }
 
   function toDBWithHeaderRecovery(cols, rows){
-    const songKeys = ["곡명","노래","노래제목","제목","song","title","name"];
-    const partKeys = ["파트악기","파트","악기","instrument","part","세션"];
-    const personKeys = ["담당자","담당","연주자","멤버","이름","person","member"];
-    const dateKeys = ["등록일","날짜","일자","date","when","time","일시"];
-    const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"];
-    const videoKeys = ["영상url","영상","video","youtube","유튜브"];
-    const poomKeys = ["송품","메모","노트","note","memo","주의","주의사항","유의사항","warn","warning"];
+    const songKeys = ["곡명","노래","노래제목","제목","song","title","name"].map(norm);
+    const partKeys = ["파트악기","파트","악기","instrument","part","세션"].map(norm);
+    const personKeys = ["담당자","담당","연주자","멤버","이름","person","member"].map(norm);
+    const dateKeys = ["등록일","날짜","일자","date","when","time","일시"].map(norm);
+    const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"].map(norm);
+    const videoKeys = ["영상url","영상","video","youtube","유튜브"].map(norm);
+    const poomKeys = ["송품","메모","노트","note","memo","주의","주의사항","유의사항","warn","warning"].map(norm);
 
     let header = cols.map(h => norm(h));
     let dataRows = rows;
@@ -1188,11 +1173,11 @@
   }
 
   function toMetaMapWithHeaderRecovery(cols, rows){
-    const songKeys = ["곡명","노래","노래제목","제목","song","title","name"];
-    const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"];
-    const noteKeys = ["메모","노트","note","memo","콘티메모","콘티","송품"];
-    const warnKeys = ["주의사항","주의","warn","warning","주의점","유의사항"];
-    const linkKeys = ["링크","url","영상","youtube","참고","reference"];
+    const songKeys = ["곡명","노래","노래제목","제목","song","title","name"].map(norm);
+    const scoreKeys = ["악보url","악보","score","sheet","chord","악보링크"].map(norm);
+    const noteKeys = ["메모","노트","note","memo","콘티메모","콘티","송품"].map(norm);
+    const warnKeys = ["주의사항","주의","warn","warning","주의점","유의사항"].map(norm);
+    const linkKeys = ["링크","url","영상","youtube","참고","reference"].map(norm);
 
     const colLabels = cols.map(h => norm(h));
     let idxSong = findCol(colLabels, songKeys);
@@ -1901,47 +1886,87 @@
     setStatus("완료", true, false);
   });
 
-  // ===== 공지 =====
-  function isNoticeHeaderRow(x){
-    const a = norm(x.title);
-    const b = norm(x.body);
-    const c = norm(x.link);
-    const d = norm(x.date);
-    const headerWords = new Set(["제목","내용","링크","날짜"]);
-    const cells = [a,b,c,d].filter(Boolean);
-    let hit = 0;
-    for (const v of cells){
-      if (headerWords.has(v)) hit++;
-    }
-    return hit >= 2; // ✅ "날짜/제목/링크" 같은 헤더 행 제거
+  // ===== 공지 (컬럼 자동 매칭 + 헤더행 제거 + 날짜 표시 정규화) =====
+  function isHeaderLikeNotice(n){
+    const a = norm(n.title);
+    const b = norm(n.body);
+    const c = norm(n.link);
+    const d = norm(n.date);
+    const set = new Set([a,b,c,d].filter(Boolean));
+
+    const hasTitle = set.has(norm("제목"));
+    const hasBody  = set.has(norm("내용"));
+    const hasLink  = set.has(norm("링크"));
+    const hasDate  = set.has(norm("날짜")) || set.has(norm("일자"));
+
+    // "날짜/제목/링크" 같은 행도 걸러짐
+    return (hasTitle && (hasBody || hasLink || hasDate)) || (hasDate && hasTitle) || (hasLink && hasTitle);
   }
 
   async function loadNoticesFromSheet(){
     const sheetId = extractSheetId(FIXED_SHEET_URL);
     const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
-    const tq = encodeURIComponent("select A,B,C,D where A is not null or B is not null");
+    const tq = encodeURIComponent("select A,B,C,D where A is not null or B is not null or C is not null or D is not null");
     const url = base + "&sheet=" + encodeURIComponent(NOTICE_SHEET_NAME) + "&tq=" + tq;
 
     const p = await loadGvizJSONP(url);
+    const cols = p.cols || [];
     const rows = p.rows || [];
 
-    let list = rows.map(r => ({
-      title: trim(r[0] ?? ""),
-      body:  trim(r[1] ?? ""),
-      link:  trim(r[2] ?? ""),
-      date:  trim(r[3] ?? ""),
-    })).filter(x => x.title || x.body);
+    const titleKeys = ["제목","title","subject"].map(norm);
+    const bodyKeys  = ["내용","body","text","message","공지내용"].map(norm);
+    const linkKeys  = ["링크","url","link"].map(norm);
+    const dateKeys  = ["날짜","일자","date","day"].map(norm);
 
-    // ✅ 1행이 헤더면 제거(날짜/제목/링크 형태 포함)
-    if (list.length && isNoticeHeaderRow(list[0])) list = list.slice(1);
+    let header = cols.map(h => norm(h));
+    let idxTitle = findCol(header, titleKeys);
+    let idxBody  = findCol(header, bodyKeys);
+    let idxLink  = findCol(header, linkKeys);
+    let idxDate  = findCol(header, dateKeys);
 
-    // ✅ 날짜는 정규화해서 저장(정렬/표시에 안정)
-    list = list.map(n => {
-      const dn = normDateStr(n.date);
-      return { ...n, date: dn || n.date };
-    });
+    let startRow = 0;
 
-    // ✅ 날짜 기준 내림차순 정렬(없으면 뒤로)
+    // cols 라벨이 비었거나 엉망이면 첫 행을 헤더로 재시도
+    const labelsBad = header.every(h => !h || /^[a-z]$/.test(h));
+    if ((idxTitle < 0 || idxBody < 0) && rows.length && labelsBad){
+      const first = rows[0].map(v => norm(v));
+      const t2 = findCol(first, titleKeys);
+      const b2 = findCol(first, bodyKeys);
+      const l2 = findCol(first, linkKeys);
+      const d2 = findCol(first, dateKeys);
+      if (t2 >= 0 && b2 >= 0){
+        idxTitle = t2; idxBody = b2; idxLink = l2; idxDate = d2;
+        startRow = 1;
+      }
+    }
+
+    // 그래도 없으면 기본 A=제목 B=내용 C=링크 D=날짜
+    if (idxTitle < 0) idxTitle = 0;
+    if (idxBody  < 0) idxBody  = 1;
+    if (idxLink  < 0) idxLink  = 2;
+    if (idxDate  < 0) idxDate  = 3;
+
+    let list = [];
+    for (let i=startRow;i<rows.length;i++){
+      const r = rows[i] || [];
+      const rawTitle = trim(r[idxTitle] ?? "");
+      const rawBody  = trim(r[idxBody] ?? "");
+      const rawLink  = trim(r[idxLink] ?? "");
+      const rawDate  = trim(r[idxDate] ?? "");
+      if (!rawTitle && !rawBody && !rawLink && !rawDate) continue;
+
+      list.push({
+        title: rawTitle,
+        body: rawBody,
+        link: rawLink,
+        date: normDateStr(rawDate), // ✅ 표시용 정규화
+      });
+    }
+
+    // 헤더 같은 행 제거
+    list = list.filter(n => !isHeaderLikeNotice(n));
+
+    // 정렬
     list.sort((a,b) => {
       const ad = normDateStr(a.date);
       const bd = normDateStr(b.date);
@@ -1957,14 +1982,15 @@
 
   function openNoticeModal(n){
     elNoticeModalTitle.textContent = n.title || "공지";
-    elNoticeModalMeta.textContent = n.date ? ("날짜: " + n.date) : "";
+    elNoticeModalMeta.textContent = n.date ? ("날짜: " + normDateStr(n.date)) : "";
     elNoticeModalBody.textContent = n.body || "";
 
     elNoticeModalActions.innerHTML = "";
-    if (n.link && /^https?:\/\//i.test(n.link)){
+    const link = trim(n.link);
+    if (link && /^https?:\/\//i.test(link)){
       const a = document.createElement("a");
       a.className = "miniBtn";
-      a.href = n.link;
+      a.href = link;
       a.target = "_blank";
       a.rel = "noopener";
       a.textContent = "링크";
@@ -2003,7 +2029,6 @@
       return;
     }
 
-    // ✅ 목록은 "제목 + 내용 미리보기"만 보여줌 (날짜/링크는 모달에서)
     NOTICE_CACHE.forEach((n) => {
       const div = document.createElement("div");
       div.className = "item";
@@ -2012,17 +2037,16 @@
       left.style.display = "flex";
       left.style.flexDirection = "column";
       left.style.gap = "4px";
-      left.style.minWidth = "0";
 
       const title = document.createElement("div");
       title.style.fontWeight = "900";
       title.textContent = n.title || "(제목 없음)";
       left.appendChild(title);
 
-      const body = document.createElement("div");
-      body.className = "muted";
-      body.textContent = snippet(n.body || "", 80);
-      left.appendChild(body);
+      const meta = document.createElement("div");
+      meta.className = "muted";
+      meta.textContent = n.date ? normDateStr(n.date) : "";
+      left.appendChild(meta);
 
       const right = document.createElement("span");
       right.className = "chip";
