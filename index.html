@@ -1,3 +1,4 @@
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -147,6 +148,7 @@
     }
     .status.ok{ color:var(--ok); }
     .status.bad{ color:var(--warn); }
+    /* ✅ 여기 오타(oree{) 때문에 CSS가 깨졌던 거 제거 */
     .spin{
       width:14px; height:14px; border-radius:999px;
       border:2px solid rgba(17,24,39,.2);
@@ -507,14 +509,14 @@
       display:inline-flex;
       width:fit-content;
     }
-    @media (max-width: 520px){
-      .calCell{ min-height:96px; padding:7px; }
-      .calChip{ padding:6px 7px; }
-    }
 
     /* ✅ 캘린더 일정 칩 - 모바일에서 2줄 표시(안 짤리게) */
     @media (max-width: 520px){
+      .calCell{ min-height:96px; padding:7px; }
+
       .calChip{
+        padding:6px 7px;
+
         white-space: normal !important;     /* 줄바꿈 허용 */
         overflow: hidden !important;
 
@@ -523,7 +525,7 @@
         -webkit-box-orient: vertical !important;
         -webkit-line-clamp: 2 !important;
 
-        word-break: keep-all;              /* 한글 단어 중간 쪼개짐 방지 */
+        word-break: keep-all;               /* 한글 단어 중간 쪼개짐 방지 */
         line-height: 1.25;
       }
     }
@@ -2110,8 +2112,7 @@
   async function loadNoticesFromSheet(){
     const sheetId = extractSheetId(FIXED_SHEET_URL);
     const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
-    const tq = encodeURIComponent("select A,B,C,D where A is not null or B is not null or C is not null or D is not null");
-    const url = base + "&sheet=" + encodeURIComponent(NOTICE_SHEET_NAME) + "&tq=" + tq;
+    const url = base + "&sheet=" + encodeURIComponent(NOTICE_SHEET_NAME) + "&tq=" + encodeURIComponent("select A,B,C,D where A is not null or B is not null or C is not null or D is not null");
 
     const p = await loadGvizJSONP(url);
     const cols = p.cols || [];
@@ -2291,8 +2292,7 @@
   async function loadCalendarFromSheet(){
     const sheetId = extractSheetId(FIXED_SHEET_URL);
     const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
-    const tq = encodeURIComponent("select A,B,C,D where A is not null or B is not null or C is not null or D is not null");
-    const url = base + "&sheet=" + encodeURIComponent(CALENDAR_SHEET_NAME) + "&tq=" + tq;
+    const url = base + "&sheet=" + encodeURIComponent(CALENDAR_SHEET_NAME) + "&tq=" + encodeURIComponent("select A,B,C,D where A is not null or B is not null or C is not null or D is not null");
 
     const p = await loadGvizJSONP(url);
     const cols = p.cols || [];
@@ -2411,7 +2411,8 @@
     elCalCells.innerHTML = "";
 
     const firstW = weekdayIndexKST(y, m0, 1); // 0=일
-    const dimPrevDays = firstW;
+    const dimCount = firstW;
+    const dimPrevDays = dimCount;
 
     // prev month
     const prevY = (m0 === 0) ? (y - 1) : y;
@@ -2528,6 +2529,7 @@
     elCalModalMeta.textContent = dateKey ? ("날짜: " + dateKey) : "";
     elCalModalBody.textContent = "";
 
+    // 목록을 본문에 깔끔하게
     const lines = [];
     evs.forEach((ev, idx) => {
       const t = (ev.title || "일정").toString();
@@ -2539,6 +2541,7 @@
 
     elCalModalActions.innerHTML = "";
 
+    // 링크가 여러 개일 수 있어서 "첫 링크"만 버튼으로
     const firstLink = evs.map(e => trim(e.link)).find(u => u && /^https?:\/\//i.test(u)) || "";
     if (firstLink){
       const a = document.createElement("a");
