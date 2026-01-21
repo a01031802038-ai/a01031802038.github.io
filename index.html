@@ -552,6 +552,13 @@
     padding-bottom: 140px !important;
   }
 }
+/* 터치(모바일/태블릿)에서는 리스트 내부 스크롤 전부 제거 */
+@media (hover: none) and (pointer: coarse) {
+  .list .body{
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
 
   </style>
 </head>
