@@ -522,10 +522,6 @@
       box-shadow: 0 0 0 3px rgba(122,162,255,.14);
       flex:0 0 auto;
     }
-    .calDot.dim{
-      background: rgba(17,24,39,.20);
-      box-shadow: none;
-    }
     .calPlus{
       font-size:12px;
       padding:2px 7px;
@@ -837,10 +833,11 @@
   const META_SHEET_NAME = 'META';
   const META_GID = '';
 
+  // ★ 콘티 탭: 주일은 "무조건 단일", 수련회는 "다일차 자동(2개 이상 일차가 있을 때만)" ★
   const SETLIST_TABS = [
-    { key: "sunday", title: "주일 콘티", sheet: "주일콘티" },
-    { key: "winter2026", title: "2026 겨울수련회 콘티", sheet: "2026겨울수련회콘티" },
-    { key: "summer2026", title: "2026 여름수련회 콘티", sheet: "2026여름수련회콘티" },
+    { key: "sunday", title: "주일 콘티", sheet: "주일콘티", mode: "single" },
+    { key: "winter2026", title: "2026 겨울수련회 콘티", sheet: "2026겨울수련회콘티", mode: "autoMulti" },
+    { key: "summer2026", title: "2026 여름수련회 콘티", sheet: "2026여름수련회콘티", mode: "autoMulti" },
   ];
 
   const NOTICE_SHEET_NAME = "공지사항";
@@ -1165,7 +1162,6 @@
   let SETLIST_CACHE = new Map();
 
   let NOTICE_CACHE = [];
-  let NOTICE_FROM_SHEET = true;
 
   // 캘린더
   let CAL_CACHE = [];
@@ -2050,7 +2046,10 @@
           tempDay.push({ col:c, num:d.num, label:d.label });
         }
       }
-      if (tempDay.length >= 1){
+
+      // ★ 오탐 방지: "일차"가 2개 이상이어야 multi로 인정
+      const uniqNums = Array.from(new Set(tempDay.map(x => x.num)));
+      if (tempDay.length >= 2 && uniqNums.length >= 2){
         headerRow = r;
         dayCols = tempDay;
         scoreCols = tempScore;
@@ -2064,12 +2063,10 @@
     const scoreByNum = new Map();
     scoreCols.forEach(s => scoreByNum.set(s.num, s.col));
 
-    // 주변 컬럼 fallback
     const hdr = rowsWide[headerRow] || [];
     for (const d of dayCols){
       if (scoreByNum.has(d.num)) continue;
 
-      // 동일 num + "악보" 포함 컬럼을 가까운 곳에서 찾기
       let found = -1;
       for (let delta=1; delta<=3; delta++){
         const right = d.col + delta;
@@ -2088,7 +2085,6 @@
       if (found >= 0) scoreByNum.set(d.num, found);
     }
 
-    // day별 데이터 추출
     const days = [];
     const sortedDayCols = dayCols.slice().sort((a,b) => a.num - b.num);
 
@@ -2111,14 +2107,12 @@
         const v = trim(rowsWide[r]?.[d.col] ?? "");
         if (!v) continue;
 
-        // "악보:" 같은 줄이면 url fallback로만 쓰고 곡으로는 제외
         const u = extractFirstUrl(v);
         if (u){
           if (!url && /악보|score|sheet|url/i.test(v)) url = u;
           continue;
         }
 
-        // 혹시 헤더가 반복되어 들어가면 제외
         const dd = detectDayLabel(v);
         if (dd && dd.num === d.num) continue;
 
@@ -2128,15 +2122,12 @@
       days.push({ label: d.label, num: d.num, songs: uniqSongs(songs), url });
     }
 
-    // 최소 1일차라도 있으면 multi로 처리
     if (!days.length) return null;
-
     return { type:"multi", days };
   }
 
   function loadSetlistWide(sheetId, sheetName){
     const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
-    // A~Z 넓게 읽어서 열이 밀려도 안전
     const tq = "select A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z " +
                "where A is not null or B is not null or C is not null or D is not null or E is not null or F is not null or G is not null or H is not null or I is not null or J is not null or K is not null or L is not null or M is not null or N is not null or O is not null or P is not null or Q is not null or R is not null or S is not null or T is not null or U is not null or V is not null or W is not null or X is not null or Y is not null or Z is not null";
     const url = base + "&sheet=" + encodeURIComponent(sheetName) + "&tq=" + encodeURIComponent(tq);
@@ -2158,9 +2149,9 @@
       for (let r=0;r<rowsWide.length;r++){
         const v = trim(rowsWide[r]?.[c] ?? "");
         if (!v) continue;
-        if (r === 0 && isHeaderWordSong(v)) continue;
+        if (isHeaderWordSong(v)) continue;     // ★ 헤더 단어는 어디 행이든 제외
+        if (detectDayLabel(v)) continue;       // ★ "1일차" 같은 셀 제외
         if (isProbablyUrlOnly(v)) continue;
-        // "악보" 컬럼처럼 보이면 제외
         if (/악보|score|sheet|url/i.test(v) && extractFirstUrl(v)) continue;
         cnt++;
       }
@@ -2192,24 +2183,31 @@
     return (bestCount > 0) ? bestCol : -1;
   }
 
-  async function loadSetlistFromSheet(sheetName){
+  async function loadSetlistFromSheet(sheetName, mode){
     const sheetId = extractSheetId(FIXED_SHEET_URL);
     const p = await loadSetlistWide(sheetId, sheetName);
     const rowsWide = p.rows || [];
 
-    // 1) 다일차(1일차/2일차/3일차 + 각 일차 악보) 자동 감지
-    const multi = buildMultiDaySetlist(rowsWide);
-    if (multi) return multi;
+    // 1) 다일차 자동 (수련회만, 그리고 2개 이상 일차가 있을 때만)
+    if (mode === "autoMulti"){
+      const multi = buildMultiDaySetlist(rowsWide);
+      if (multi) return multi;
+    }
 
-    // 2) 단일 콘티(열이 밀려도 자동으로 곡열/악보열 추정)
+    // 2) 단일 콘티 (주일 포함)
     if (!rowsWide.length) return { type:"single", songs: [], url: "" };
 
     const songCol = chooseBestSongCol(rowsWide);
     const urlCol  = chooseBestUrlCol(rowsWide);
 
-    const songsRaw = rowsWide.map((r, idx) => trim(r?.[songCol] ?? "")).filter(Boolean);
-    const songs = (songsRaw[0] && isHeaderWordSong(songsRaw[0])) ? songsRaw.slice(1) : songsRaw;
-    const cleanedSongs = uniqSongs(songs);
+    const songsRaw = rowsWide
+      .map(r => trim(r?.[songCol] ?? ""))
+      .filter(Boolean)
+      .filter(v => !isHeaderWordSong(v))
+      .filter(v => !detectDayLabel(v))
+      .filter(v => !(extractFirstUrl(v) && /악보|score|sheet|url/i.test(v))); // "악보: URL" 같은 줄 제외
+
+    const cleanedSongs = uniqSongs(songsRaw);
 
     let setlistUrl = "";
     if (urlCol >= 0){
@@ -2219,7 +2217,7 @@
       }
     } else {
       // 혹시 곡열에 "악보: url"이 섞여 있으면 그 중 첫 url을 악보로
-      for (const v of songsRaw){
+      for (const v of rowsWide.map(r => trim(r?.[songCol] ?? "")).filter(Boolean)){
         const u = extractFirstUrl(v);
         if (u && /악보|score|sheet|url/i.test(v)){ setlistUrl = u; break; }
       }
@@ -2231,7 +2229,7 @@
   async function loadAllSetlists(){
     for (const def of SETLIST_TABS){
       try{
-        const data = await loadSetlistFromSheet(def.sheet);
+        const data = await loadSetlistFromSheet(def.sheet, def.mode || "single");
         SETLIST_CACHE.set(def.key, data);
       } catch(e){
         SETLIST_CACHE.set(def.key, { type:"single", songs: [], url: "" });
@@ -2250,7 +2248,7 @@
       if (def.key === activeSetlistKey) b.classList.add("active");
       b.addEventListener("click", () => {
         activeSetlistKey = def.key;
-        activeSetlistDay = ""; // 콘티 바꾸면 일차 선택도 리셋
+        activeSetlistDay = "";
         slRenderTabs();
         slRenderList();
       });
@@ -2460,7 +2458,6 @@
       return 0;
     });
 
-    NOTICE_FROM_SHEET = true;
     return list;
   }
 
@@ -2551,7 +2548,6 @@
       renderNotices();
       setStatus("완료", true, false);
     } catch(e){
-      NOTICE_FROM_SHEET = false;
       NOTICE_CACHE = [];
       renderNotices();
       setStatus("불러오기 실패\n" + e.message, false, false);
@@ -3013,7 +3009,6 @@
       try{
         NOTICE_CACHE = await loadNoticesFromSheet();
       } catch(e){
-        NOTICE_FROM_SHEET = false;
         NOTICE_CACHE = [];
       }
 
