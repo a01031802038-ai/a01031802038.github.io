@@ -1,3 +1,4 @@
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -543,14 +544,13 @@
       .calMore{ display:none !important; }
       .calDots{ margin-top:6px; }
     }
+
     @media (hover: none) and (pointer: coarse) {
       #resultPaneBody{
         max-height: none !important;
         overflow: visible !important;
         padding-bottom: 140px !important;
       }
-    }
-    @media (hover: none) and (pointer: coarse) {
       .list .body{
         max-height: none !important;
         overflow: visible !important;
@@ -830,6 +830,7 @@
   </div>
 
 <script>
+  // ====== 설정(고정 시트) ======
   const FIXED_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1fyGPILf7sxYSBLx1gq7hFeZwV0enO0F3ufh-9DmbJp0/edit?gid=1851883768#gid=1851883768';
   const FIXED_GID = '1851883768';
   const FIXED_SHEET_NAME = 'DB';
@@ -846,6 +847,7 @@
   const NOTICE_SHEET_NAME = "공지사항";
   const CALENDAR_SHEET_NAME = "캘린더";
 
+  // ===== 유틸 =====
   const KST_TZ = "Asia/Seoul";
   const KST_OFFSET_HOURS = 9;
 
@@ -995,6 +997,13 @@
     return m ? m[0].trim() : "";
   }
 
+  function isProbablyUrlOnly(v){
+    const t = trim(v);
+    if (!t) return false;
+    return /^https?:\/\/\S+$/i.test(t);
+  }
+
+  // ===== DOM =====
   const elTopDot = document.getElementById("topDot");
   const elTopStatusText = document.getElementById("topStatusText");
 
@@ -1153,12 +1162,13 @@
   const FREQUENT_MIN_COUNT = 2;
 
   let activeSetlistKey = SETLIST_TABS[0].key;
-  let activeSetlistDayId = ""; // ✅ 1일차/2일차/3일차 선택값
+  let activeSetlistDay = ""; // multi-day일 때 선택된 일차 label
   let SETLIST_CACHE = new Map();
 
   let NOTICE_CACHE = [];
   let NOTICE_FROM_SHEET = true;
 
+  // 캘린더
   let CAL_CACHE = [];
   let CAL_BY_DATE = new Map();
   let CAL_MONTH = (() => {
@@ -1166,10 +1176,9 @@
     return { y: p.y, m: p.m - 1 };
   })();
 
+  // 모바일 판별(캘린더 렌더 기준)
   const calMQ = window.matchMedia("(max-width: 520px)");
-  function isCalMobile(){
-    return !!calMQ.matches;
-  }
+  function isCalMobile(){ return !!calMQ.matches; }
 
   function rebuildSongs(){
     SONGS = uniqueBy(DB, r => r.songKey).map(r => r.song).sort((a,b) => a.localeCompare(b,"ko"));
@@ -1986,7 +1995,7 @@
     elPPBody.innerHTML = "";
   }
 
-  // ===== 콘티 =====
+  // ===== 콘티(단일/다일차 안전 파서) =====
   function uniqSongs(arr){
     const seen = new Set();
     const out = [];
@@ -2001,96 +2010,220 @@
     return out;
   }
 
-  function isHeaderRowForDays(row){
-    const hs = row.map(v => norm(v));
-    const hasDay = hs.some(h => /^(\d+)일차$/.test(h));
-    return hasDay;
+  function detectDayLabel(raw){
+    const s = trim(raw);
+    if (!s) return null;
+    const m = s.match(/(\d+)\s*일\s*차/i);
+    if (m) return { num: parseInt(m[1],10), label: `${parseInt(m[1],10)}일차` };
+    if (s === "일차") return null;
+    return null;
   }
 
-  function buildMultiDaySetlist(rows){
-    if (!rows || rows.length < 2) return null;
+  function isScoreHeader(raw){
+    const s = trim(raw);
+    if (!s) return false;
+    const n = norm(s);
+    return n.includes(norm("악보")) || n.includes("score") || n.includes("sheet") || n.includes("url");
+  }
 
-    const header = rows[0].map(v => trim(v ?? ""));
-    const headerN = header.map(v => norm(v));
+  function buildMultiDaySetlist(rowsWide){
+    if (!rowsWide || !rowsWide.length) return null;
 
-    if (!isHeaderRowForDays(header)) return null;
+    // 헤더 후보: 0~2행에서 "1일차/2일차..." 탐색
+    let headerRow = -1;
+    let dayCols = [];   // {col, num, label}
+    let scoreCols = []; // {col, num, label}
 
-    function idxOfExact(label){
-      const nl = norm(label);
-      let idx = headerN.findIndex(h => h === nl);
-      if (idx >= 0) return idx;
-      idx = headerN.findIndex(h => h.includes(nl));
-      return idx;
+    for (let r=0; r<Math.min(3, rowsWide.length); r++){
+      const row = rowsWide[r] || [];
+      const tempDay = [];
+      const tempScore = [];
+      for (let c=0;c<row.length;c++){
+        const cell = trim(row[c] ?? "");
+        if (!cell) continue;
+
+        const d = detectDayLabel(cell);
+        if (!d) continue;
+
+        if (isScoreHeader(cell)){
+          tempScore.push({ col:c, num:d.num, label:d.label });
+        } else {
+          tempDay.push({ col:c, num:d.num, label:d.label });
+        }
+      }
+      if (tempDay.length >= 1){
+        headerRow = r;
+        dayCols = tempDay;
+        scoreCols = tempScore;
+        break;
+      }
     }
 
-    const days = [];
-    for (let n=1; n<=6; n++){
-      const dayTitle = `${n}일차`;
-      const songCol = idxOfExact(dayTitle);
-      if (songCol < 0) continue;
+    if (headerRow < 0 || !dayCols.length) return null;
 
-      let scoreCol = idxOfExact(`${n}일차악보`);
-      if (scoreCol < 0) scoreCol = idxOfExact(`${n}일차 악보`);
-      if (scoreCol < 0) scoreCol = idxOfExact(`${n}일차링크`);
-      if (scoreCol < 0) scoreCol = idxOfExact(`${n}일차 링크`);
-      if (scoreCol < 0) scoreCol = idxOfExact(`${n}일차url`);
-      if (scoreCol < 0) scoreCol = idxOfExact(`${n}일차 url`);
+    // day별 score col 매핑 (없으면 주변에서 찾아보기)
+    const scoreByNum = new Map();
+    scoreCols.forEach(s => scoreByNum.set(s.num, s.col));
 
-      if (scoreCol < 0 && headerN[songCol + 1]){
-        const hn = headerN[songCol + 1];
-        if (hn.includes("악보") || hn.includes("링크") || hn.includes("url")) scoreCol = songCol + 1;
+    // 주변 컬럼 fallback
+    const hdr = rowsWide[headerRow] || [];
+    for (const d of dayCols){
+      if (scoreByNum.has(d.num)) continue;
+
+      // 동일 num + "악보" 포함 컬럼을 가까운 곳에서 찾기
+      let found = -1;
+      for (let delta=1; delta<=3; delta++){
+        const right = d.col + delta;
+        const left = d.col - delta;
+        if (right < hdr.length){
+          const v = trim(hdr[right] ?? "");
+          const dd = detectDayLabel(v);
+          if (dd && dd.num === d.num && isScoreHeader(v)){ found = right; break; }
+        }
+        if (left >= 0){
+          const v = trim(hdr[left] ?? "");
+          const dd = detectDayLabel(v);
+          if (dd && dd.num === d.num && isScoreHeader(v)){ found = left; break; }
+        }
       }
+      if (found >= 0) scoreByNum.set(d.num, found);
+    }
 
-      const songsRaw = [];
+    // day별 데이터 추출
+    const days = [];
+    const sortedDayCols = dayCols.slice().sort((a,b) => a.num - b.num);
+
+    for (const d of sortedDayCols){
+      const songs = [];
       let url = "";
 
-      for (let i=1;i<rows.length;i++){
-        const r = rows[i] || [];
-        const s = trim(r[songCol] ?? "");
-        if (s && norm(s) !== norm("곡명")) songsRaw.push(s);
-
-        if (!url && scoreCol >= 0){
-          const u = extractFirstUrl(r[scoreCol] ?? "");
-          if (u) url = u;
+      // score col에서 url 먼저 찾기
+      const sc = scoreByNum.has(d.num) ? scoreByNum.get(d.num) : -1;
+      if (sc >= 0){
+        for (let r=headerRow+1; r<rowsWide.length; r++){
+          const v = trim(rowsWide[r]?.[sc] ?? "");
+          const u = extractFirstUrl(v);
+          if (u){ url = u; break; }
         }
       }
 
-      const songs = uniqSongs(songsRaw);
-      const id = `day${n}`;
-      if (songs.length || url){
-        days.push({ id, title: dayTitle, songs, url });
+      // day col에서 곡 리스트
+      for (let r=headerRow+1; r<rowsWide.length; r++){
+        const v = trim(rowsWide[r]?.[d.col] ?? "");
+        if (!v) continue;
+
+        // "악보:" 같은 줄이면 url fallback로만 쓰고 곡으로는 제외
+        const u = extractFirstUrl(v);
+        if (u){
+          if (!url && /악보|score|sheet|url/i.test(v)) url = u;
+          continue;
+        }
+
+        // 혹시 헤더가 반복되어 들어가면 제외
+        const dd = detectDayLabel(v);
+        if (dd && dd.num === d.num) continue;
+
+        songs.push(v);
       }
+
+      days.push({ label: d.label, num: d.num, songs: uniqSongs(songs), url });
     }
 
+    // 최소 1일차라도 있으면 multi로 처리
     if (!days.length) return null;
+
     return { type:"multi", days };
+  }
+
+  function loadSetlistWide(sheetId, sheetName){
+    const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
+    // A~Z 넓게 읽어서 열이 밀려도 안전
+    const tq = "select A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z " +
+               "where A is not null or B is not null or C is not null or D is not null or E is not null or F is not null or G is not null or H is not null or I is not null or J is not null or K is not null or L is not null or M is not null or N is not null or O is not null or P is not null or Q is not null or R is not null or S is not null or T is not null or U is not null or V is not null or W is not null or X is not null or Y is not null or Z is not null";
+    const url = base + "&sheet=" + encodeURIComponent(sheetName) + "&tq=" + encodeURIComponent(tq);
+    return loadGvizJSONP(url);
+  }
+
+  function isHeaderWordSong(v){
+    const n = norm(v);
+    return n === norm("곡명") || n === norm("노래") || n === norm("제목") || n === "song" || n === "title" || n === "name";
+  }
+
+  function chooseBestSongCol(rowsWide){
+    const MAX_COL = Math.min(26, rowsWide[0]?.length || 26);
+    let bestCol = 0;
+    let bestCount = -1;
+
+    for (let c=0;c<MAX_COL;c++){
+      let cnt = 0;
+      for (let r=0;r<rowsWide.length;r++){
+        const v = trim(rowsWide[r]?.[c] ?? "");
+        if (!v) continue;
+        if (r === 0 && isHeaderWordSong(v)) continue;
+        if (isProbablyUrlOnly(v)) continue;
+        // "악보" 컬럼처럼 보이면 제외
+        if (/악보|score|sheet|url/i.test(v) && extractFirstUrl(v)) continue;
+        cnt++;
+      }
+      if (cnt > bestCount){
+        bestCount = cnt;
+        bestCol = c;
+      }
+    }
+    return bestCol;
+  }
+
+  function chooseBestUrlCol(rowsWide){
+    const MAX_COL = Math.min(26, rowsWide[0]?.length || 26);
+    let bestCol = -1;
+    let bestCount = -1;
+
+    for (let c=0;c<MAX_COL;c++){
+      let cnt = 0;
+      for (let r=0;r<rowsWide.length;r++){
+        const v = trim(rowsWide[r]?.[c] ?? "");
+        if (!v) continue;
+        if (extractFirstUrl(v)) cnt++;
+      }
+      if (cnt > bestCount){
+        bestCount = cnt;
+        bestCol = c;
+      }
+    }
+    return (bestCount > 0) ? bestCol : -1;
   }
 
   async function loadSetlistFromSheet(sheetName){
     const sheetId = extractSheetId(FIXED_SHEET_URL);
-    const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
+    const p = await loadSetlistWide(sheetId, sheetName);
+    const rowsWide = p.rows || [];
 
-    const urlWide = base + "&sheet=" + encodeURIComponent(sheetName) +
-      "&tq=" + encodeURIComponent("select A,B,C,D,E,F where A is not null or B is not null or C is not null or D is not null or E is not null or F is not null");
-    const pWide = await loadGvizJSONP(urlWide);
-    const rowsWide = pWide.rows || [];
-
+    // 1) 다일차(1일차/2일차/3일차 + 각 일차 악보) 자동 감지
     const multi = buildMultiDaySetlist(rowsWide);
     if (multi) return multi;
 
-    const url = base + "&sheet=" + encodeURIComponent(sheetName) +
-      "&tq=" + encodeURIComponent("select A,B where A is not null or B is not null");
+    // 2) 단일 콘티(열이 밀려도 자동으로 곡열/악보열 추정)
+    if (!rowsWide.length) return { type:"single", songs: [], url: "" };
 
-    const p = await loadGvizJSONP(url);
+    const songCol = chooseBestSongCol(rowsWide);
+    const urlCol  = chooseBestUrlCol(rowsWide);
 
-    const songsRaw = (p.rows || []).map(r => trim(r[0] ?? "")).filter(Boolean);
-    const songs = (songsRaw[0] && norm(songsRaw[0]) === norm("곡명")) ? songsRaw.slice(1) : songsRaw;
+    const songsRaw = rowsWide.map((r, idx) => trim(r?.[songCol] ?? "")).filter(Boolean);
+    const songs = (songsRaw[0] && isHeaderWordSong(songsRaw[0])) ? songsRaw.slice(1) : songsRaw;
     const cleanedSongs = uniqSongs(songs);
 
     let setlistUrl = "";
-    for (const r of (p.rows || [])){
-      const u = extractFirstUrl(r[1] ?? "");
-      if (u){ setlistUrl = u; break; }
+    if (urlCol >= 0){
+      for (const r of rowsWide){
+        const u = extractFirstUrl(r?.[urlCol] ?? "");
+        if (u){ setlistUrl = u; break; }
+      }
+    } else {
+      // 혹시 곡열에 "악보: url"이 섞여 있으면 그 중 첫 url을 악보로
+      for (const v of songsRaw){
+        const u = extractFirstUrl(v);
+        if (u && /악보|score|sheet|url/i.test(v)){ setlistUrl = u; break; }
+      }
     }
 
     return { type:"single", songs: cleanedSongs, url: setlistUrl };
@@ -2118,7 +2251,7 @@
       if (def.key === activeSetlistKey) b.classList.add("active");
       b.addEventListener("click", () => {
         activeSetlistKey = def.key;
-        activeSetlistDayId = "";
+        activeSetlistDay = ""; // 콘티 바꾸면 일차 선택도 리셋
         slRenderTabs();
         slRenderList();
       });
@@ -2126,47 +2259,28 @@
     });
   }
 
-  function getActiveSetlistDef(){
-    return SETLIST_TABS.find(d => d.key === activeSetlistKey);
-  }
-
-  function getActiveSetlistData(){
-    return SETLIST_CACHE.get(activeSetlistKey) || { type:"single", songs:[], url:"" };
-  }
-
-  function getActiveDay(data){
-    if (!data || data.type !== "multi") return null;
-    const days = data.days || [];
-    if (!days.length) return null;
-
-    if (!activeSetlistDayId || !days.some(d => d.id === activeSetlistDayId)){
-      activeSetlistDayId = days[0].id;
-    }
-    return days.find(d => d.id === activeSetlistDayId) || days[0];
-  }
-
   function slRenderDayTabs(data){
-    if (!data || data.type !== "multi" || !(data.days || []).length){
+    elSlDayTabs.innerHTML = "";
+    if (!data || data.type !== "multi" || !data.days || !data.days.length){
       elSlDayTabs.style.display = "none";
-      elSlDayTabs.innerHTML = "";
       return;
     }
-
     elSlDayTabs.style.display = "flex";
-    elSlDayTabs.innerHTML = "";
 
-    const days = data.days || [];
-    const active = getActiveDay(data);
+    const labels = data.days.map(d => d.label);
+    if (!activeSetlistDay || !labels.includes(activeSetlistDay)){
+      activeSetlistDay = labels[0];
+    }
 
-    days.forEach(d => {
+    data.days.forEach(d => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "miniBtn";
-      b.textContent = d.title;
+      b.textContent = d.label;
       b.style.borderRadius = "999px";
-      if (active && d.id === active.id) b.classList.add("active");
+      b.classList.toggle("active", d.label === activeSetlistDay);
       b.addEventListener("click", () => {
-        activeSetlistDayId = d.id;
+        activeSetlistDay = d.label;
         slRenderDayTabs(data);
         slRenderList();
       });
@@ -2174,34 +2288,43 @@
     });
   }
 
-  function slRenderList(){
-    const def = getActiveSetlistDef();
-    const data = getActiveSetlistData();
-
-    let title = def ? def.title : activeSetlistKey;
-    let arr = [];
-    let url = "";
+  function slGetActiveBlock(def, data){
+    if (!data) return { title:(def?.title||"-"), songs:[], url:"" };
 
     if (data.type === "multi"){
-      slRenderDayTabs(data);
-      const day = getActiveDay(data);
-      if (day){
-        title = title + " · " + (day.title || "");
-        arr = day.songs || [];
-        url = day.url || "";
-      }
-    } else {
-      slRenderDayTabs(null);
-      arr = data.songs || [];
-      url = data.url || "";
+      const days = data.days || [];
+      const label = activeSetlistDay || (days[0]?.label || "");
+      const day = days.find(x => x.label === label) || days[0] || { label:"", songs:[], url:"" };
+      return {
+        title: (def?.title || activeSetlistKey) + (day.label ? (" · " + day.label) : ""),
+        songs: day.songs || [],
+        url: day.url || "",
+        dayLabel: day.label || ""
+      };
     }
 
-    elSlTitle.textContent = title;
+    return {
+      title: (def?.title || activeSetlistKey),
+      songs: data.songs || [],
+      url: data.url || ""
+    };
+  }
+
+  function slRenderList(){
+    const def = SETLIST_TABS.find(d => d.key === activeSetlistKey);
+    const data = SETLIST_CACHE.get(activeSetlistKey) || { type:"single", songs: [], url: "" };
+
+    slRenderDayTabs(data);
+
+    const block = slGetActiveBlock(def, data);
+    const arr = block.songs || [];
+
+    elSlTitle.textContent = block.title || "-";
     elSlCount.textContent = String(arr.length);
     elSlBadge.textContent = (def ? def.title : "-");
 
-    if (url){
-      elSlScoreBtn.href = url;
+    if (block.url){
+      elSlScoreBtn.href = block.url;
       elSlScoreBtn.style.display = "inline-flex";
     } else {
       elSlScoreBtn.style.display = "none";
@@ -2229,27 +2352,12 @@
   }
 
   elSlCopyBtn.addEventListener("click", async () => {
-    const def = getActiveSetlistDef();
-    const data = getActiveSetlistData();
+    const def = SETLIST_TABS.find(d => d.key === activeSetlistKey);
+    const data = SETLIST_CACHE.get(activeSetlistKey) || { type:"single", songs: [], url: "" };
+    const block = slGetActiveBlock(def, data);
 
-    let title = def ? def.title : activeSetlistKey;
-    let arr = [];
-    let url = "";
-
-    if (data.type === "multi"){
-      const day = getActiveDay(data);
-      if (day){
-        title = title + " · " + (day.title || "");
-        arr = day.songs || [];
-        url = day.url || "";
-      }
-    } else {
-      arr = data.songs || [];
-      url = data.url || "";
-    }
-
-    const urlLine = url ? `악보: ${url}\n` : "";
-    const text = [title, urlLine, ...arr.map((s,i) => `${i+1}. ${s}`)]
+    const urlLine = block.url ? `악보: ${block.url}\n` : "";
+    const text = [block.title, urlLine, ...(block.songs || []).map((s,i) => `${i+1}. ${s}`)]
       .filter(Boolean)
       .join("\n");
 
@@ -2967,6 +3075,7 @@
     elQ.focus();
   });
 
+  // ===== 시작 =====
   setView("search");
   setActiveModeButtons();
   slRenderTabs();
