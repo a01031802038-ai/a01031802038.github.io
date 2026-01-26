@@ -1552,12 +1552,6 @@
   }
 
   // ===== 송품(날짜 클릭 필터) =====
-  const POOM_STATE = {
-    lastSongKey: "",
-    selectedDate: "__all__",
-    byDate: new Map(),
-    dates: []
-  };
 
   function resetPoomState(){
     POOM_STATE.lastSongKey = "";
@@ -1565,6 +1559,7 @@
     POOM_STATE.byDate = new Map();
     POOM_STATE.dates = [];
   }
+
 
   function hideMetaBox(){
     elMetaBox.style.display = "none";
