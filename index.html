@@ -108,7 +108,6 @@
       gap:8px;
       user-select:none;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
     }
     .miniBtn:hover, .btn:hover, .clearBtn:hover{ background:#fafafa; }
     .miniBtn.active{
@@ -341,7 +340,6 @@
       gap:8px;
       -webkit-tap-highlight-color: transparent;
       user-select:none;
-      touch-action: manipulation;
     }
     .navBtn.active{
       background: rgba(122,162,255,.20);
@@ -496,7 +494,6 @@
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      touch-action: manipulation;
     }
     .calChip:hover{ background:#fafafa; }
     .calMore{
@@ -558,23 +555,6 @@
         max-height: none !important;
         overflow: visible !important;
       }
-    }
-
-    /* ===== 콘티 탭 하단 액션바(악보/복사/새로고침) ===== */
-    .slActions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:12px;
-
-      position: sticky;
-      bottom: calc(10px + 76px + env(safe-area-inset-bottom)); /* 하단 네비 높이만큼 위 */
-      z-index: 70;
-
-      background: rgba(255,255,255,.96);
-      backdrop-filter: blur(10px);
-      padding: 10px 0;
-      border-top: 1px solid rgba(17,24,39,.10);
     }
   </style>
 </head>
@@ -744,8 +724,7 @@
           <div class="body" id="slBody" style="max-height:520px;"></div>
         </div>
 
-        <!-- ✅ 여기: 하단 액션바로 변경 -->
-        <div id="slActions" class="slActions">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
           <a class="miniBtn" id="slScoreBtn" href="#" target="_blank" rel="noopener" style="display:none; text-decoration:none;">악보</a>
           <button class="miniBtn" id="slCopyBtn" type="button">복사</button>
           <button class="miniBtn" id="slReloadBtn" type="button">새로고침</button>
@@ -1174,7 +1153,7 @@
   const FREQUENT_MIN_COUNT = 2;
 
   let activeSetlistKey = SETLIST_TABS[0].key;
-  let activeSetlistDayId = "";
+  let activeSetlistDayId = ""; // ✅ 1일차/2일차/3일차 선택값
   let SETLIST_CACHE = new Map();
 
   let NOTICE_CACHE = [];
@@ -1490,7 +1469,6 @@
     a.target = "_blank";
     a.rel = "noopener";
     a.textContent = label;
-    a.style.touchAction = "manipulation";
     return a;
   }
 
@@ -1552,14 +1530,12 @@
   }
 
   // ===== 송품(날짜 클릭 필터) =====
-
   function resetPoomState(){
     POOM_STATE.lastSongKey = "";
     POOM_STATE.selectedDate = "__all__";
     POOM_STATE.byDate = new Map();
     POOM_STATE.dates = [];
   }
-
 
   function hideMetaBox(){
     elMetaBox.style.display = "none";
@@ -2091,40 +2067,43 @@
   }
 
   async function loadSetlistFromSheet(sheetName){
-    const sheetId = extractSheetId(FIXED_SHEET_URL);
-    const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
+  const sheetId = extractSheetId(FIXED_SHEET_URL);
+  const base = "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json";
 
-    try{
-      const urlWide = base + "&sheet=" + encodeURIComponent(sheetName) +
-        "&tq=" + encodeURIComponent(
-          "select A,B,C,D,E,F where A is not null or B is not null or C is not null or D is not null or E is not null or F is not null"
-        );
-      const pWide = await loadGvizJSONP(urlWide);
-      const rowsWide = pWide.rows || [];
+  // 1) 멀티일차(여름/겨울) 감지용 와이드 쿼리: 실패해도 죽지 말고 그냥 넘어가게
+  try{
+    const urlWide = base + "&sheet=" + encodeURIComponent(sheetName) +
+      "&tq=" + encodeURIComponent(
+        "select A,B,C,D,E,F where A is not null or B is not null or C is not null or D is not null or E is not null or F is not null"
+      );
+    const pWide = await loadGvizJSONP(urlWide);
+    const rowsWide = pWide.rows || [];
 
-      const multi = buildMultiDaySetlist(rowsWide);
-      if (multi) return multi;
-    } catch(e){
-      // 주일콘티처럼 A,B만 있는 시트면 여기서 에러나도 정상
-    }
-
-    const url = base + "&sheet=" + encodeURIComponent(sheetName) +
-      "&headers=1" +
-      "&tq=" + encodeURIComponent("select A,B where A is not null or B is not null");
-
-    const p = await loadGvizJSONP(url);
-
-    const songsRaw = (p.rows || []).map(r => trim(r[0] ?? "")).filter(Boolean);
-    const cleanedSongs = uniqSongs(songsRaw);
-
-    let setlistUrl = "";
-    for (const r of (p.rows || [])){
-      const u = extractFirstUrl(r[1] ?? "");
-      if (u){ setlistUrl = u; break; }
-    }
-
-    return { type:"single", songs: cleanedSongs, url: setlistUrl };
+    const multi = buildMultiDaySetlist(rowsWide);
+    if (multi) return multi;
+  } catch(e){
+    // ✅ 주일콘티처럼 A,B만 있는 시트면 여기서 에러나도 정상(그냥 싱글로 처리)
   }
+
+  // 2) 싱글(주일콘티)용: headers=1로 1행 헤더를 데이터에서 제외
+  const url = base + "&sheet=" + encodeURIComponent(sheetName) +
+    "&headers=1" +
+    "&tq=" + encodeURIComponent("select A,B where A is not null or B is not null");
+
+  const p = await loadGvizJSONP(url);
+
+  const songsRaw = (p.rows || []).map(r => trim(r[0] ?? "")).filter(Boolean);
+  const cleanedSongs = uniqSongs(songsRaw);
+
+  let setlistUrl = "";
+  for (const r of (p.rows || [])){
+    const u = extractFirstUrl(r[1] ?? "");
+    if (u){ setlistUrl = u; break; }
+  }
+
+  return { type:"single", songs: cleanedSongs, url: setlistUrl };
+}
+
 
   async function loadAllSetlists(){
     for (const def of SETLIST_TABS){
