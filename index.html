@@ -565,6 +565,21 @@
         overflow: visible !important;
       }
     }
+    :root{ --navH: 76px; } /* 네비 높이 */
+
+body{
+  padding-bottom: calc(var(--navH) + 24px + env(safe-area-inset-bottom));
+}
+
+/* 각 화면 섹션이 nav에 안 먹히게 바닥 여백 확보 */
+.view{
+  padding-bottom: calc(var(--navH) + 28px + env(safe-area-inset-bottom));
+}
+
+/* 특히 콘티 화면은 더 여유 주면 체감 좋음 */
+#viewSetlists{
+  padding-bottom: calc(var(--navH) + 48px + env(safe-area-inset-bottom));
+}
   </style>
 </head>
 
